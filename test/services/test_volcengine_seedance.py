@@ -260,8 +260,8 @@ class TestVolcEngineSeedanceService(unittest.TestCase):
         finally:
             logger.remove(handler_id)
 
-        # 用户请求 99 秒、实际提交 8 秒。其它付费视频源都会说明这次收敛，因此
-        # 日志必须同时带上请求值和提交值，否则成片片段比配置值短时无法解释。
+        # El usuario pidió 99 segundos y se enviaron 8. Las demás fuentes de video de pago explican este ajuste, así que
+        # el log debe incluir tanto el valor pedido como el enviado, o no se podría explicar por qué los fragmentos del video final son más cortos que lo configurado.
         self.assertEqual(result[0].duration, 8)
         self.assertTrue(
             any(
@@ -420,8 +420,8 @@ class TestVolcEngineSeedanceService(unittest.TestCase):
         self.assertEqual(raised.exception.task_id, "cgt-running")
 
     def test_network_retry_stops_when_total_run_deadline_is_reached(self):
-        # 第一次请求前仍有 59 秒；请求异常返回时总截止时间已经过去，不能继续
-        # 执行其余五次网络重试，也不能再进入退避 sleep。
+        # Antes de la primera petición quedan 59 segundos; cuando la petición vuelve con excepción, el plazo total ya ha pasado, así que no pueden
+        # ejecutarse los otros cinco reintentos de red ni entrar en el sleep de espera.
         config.app["volcengine_seedance_run_timeout"] = 60
         clock = iter([0.0, 1.0, 61.0])
         with (
@@ -476,8 +476,8 @@ class TestVolcEngineSeedanceService(unittest.TestCase):
             }
         )
         running = self._response({"id": "cgt-running", "status": "running"})
-        # 第一次响应完成时只剩 0.25 秒，应只休眠剩余时间；下一轮在发起
-        # 网络请求前发现截止时间已过，避免额外一次远端请求。
+        # Cuando termina la primera respuesta solo quedan 0,25 segundos, así que solo debe dormirse el tiempo restante; la siguiente ronda, antes de lanzar
+        # la petición de red, detecta que el plazo ya pasó, evitando una petición remota extra.
         clock = iter([0.0, 59.0, 59.75, 60.1])
         with (
             patch.object(seedance.requests, "get", return_value=running) as get,
@@ -861,8 +861,8 @@ class TestVolcEngineSeedanceMaterialIntegration(unittest.TestCase):
             video_source="volcengine_seedance",
         )
         memory_state = sm.MemoryState()
-        # 终态失败和协议异常使用基础错误类型。这里验证它们与“状态未知”
-        # 异常保持同一恢复信息契约，不会在任务状态中丢失远端任务 ID。
+        # Los fallos de estado final y las anomalías de protocolo usan el tipo de error base. Aquí se verifica que mantienen el mismo contrato de información de recuperación
+        # que la excepción de «estado desconocido», sin perder en el estado de la tarea el ID de la tarea remota.
         error = seedance.VolcEngineSeedanceError(
             "remote task failed", task_id="cgt-terminal"
         )

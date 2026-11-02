@@ -143,7 +143,7 @@ def test_voxcpm_tts_sends_identity_and_delivery_references_as_data_uris(
     monkeypatch.setattr(voice.requests, "post", post)
     reference_audio = _wav_bytes()
     prompt_audio = _wav_bytes()
-    prompt_text = "准确的演绎示范逐字稿。"
+    prompt_text = "Transcripción literal precisa de la demostración de interpretación."
 
     assert (
         voice.voxcpm_tts(
@@ -167,7 +167,7 @@ def test_voxcpm_tts_sends_identity_and_delivery_references_as_data_uris(
 
 @pytest.mark.parametrize(
     ("prompt_audio", "prompt_text"),
-    [(_wav_bytes(), ""), (None, "演绎示范")],
+    [(_wav_bytes(), ""), (None, "demostración de interpretación")],
 )
 def test_voxcpm_tts_requires_prompt_audio_and_text_together(
     monkeypatch,

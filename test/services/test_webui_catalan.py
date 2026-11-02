@@ -13,7 +13,7 @@ WEBUI_MAIN = Path(__file__).resolve().parents[2] / "webui" / "Main.py"
 
 
 def _selectbox(app, key):
-    """语言切换会重建带 locale 后缀的控件，按稳定键查找。"""
+    """El cambio de idioma reconstruye los controles con sufijo de locale; se buscan por clave estable."""
     return next(
         item for item in app.selectbox
         if item.key == key or str(item.key).startswith(f"{key}_")
@@ -22,8 +22,8 @@ def _selectbox(app, key):
 
 @pytest.fixture
 def catalan_app():
-    # 使用无凭据的配置、空任务列表和禁止写盘的保存函数，避免界面测试读取
-    # 用户任务或修改真实配置。保留内置音色目录，检查实际的加泰罗尼亚语音色。
+    # Usa una configuración sin credenciales, una lista de tareas vacía y una función de guardado que prohíbe escribir en disco, para que la prueba de interfaz no lea
+    # tareas del usuario ni modifique la configuración real. Conserva el catálogo de voces incluido para comprobar las voces catalanas reales.
     with (
         patch.object(config, "app", {"llm_provider": "openai", "video_source": "pexels"}),
         patch.object(config, "ui", {
@@ -32,8 +32,8 @@ def catalan_app():
         }),
         patch.object(config, "try_save_config", return_value=True),
         patch.object(sm.state, "get_all_tasks", return_value=([], 0)),
-        # 固定为已完成且无更新，避免启动真实 GitHub 请求和后台刷新，
-        # 也不读写进程级版本检查缓存，让语言切换与弹窗测试保持确定性。
+        # se fija como completado y sin actualizaciones, para no lanzar peticiones reales a GitHub ni actualizaciones en segundo plano,
+        # ni leer/escribir la caché de comprobación de versión a nivel de proceso, manteniendo deterministas las pruebas de cambio de idioma y del diálogo.
         patch.object(
             version_checker,
             "poll_available_update",
@@ -48,7 +48,7 @@ def catalan_app():
 
 
 def test_catalan_language_switch_preserves_script_and_script_language(catalan_app):
-    """真实执行 Streamlit 重跑：一次切换即生效，正文和生成语言不随 UI 丢失。"""
+    """Ejecuta de verdad el rerun de Streamlit: el cambio surte efecto en una vez, y el texto y el idioma de generación no se pierden con la UI."""
     app = catalan_app
     assert "Català" in _selectbox(app, "top_language_code_selector").options
     assert _selectbox(app, "script_language_select").label == "Idioma del guió"
@@ -71,7 +71,7 @@ def test_catalan_language_switch_preserves_script_and_script_language(catalan_ap
 
 
 def test_catalan_builtin_voices_and_settings_dialog(catalan_app):
-    """两种内置音色可供选择；设置弹窗可使用新语言正常打开。"""
+    """Hay dos voces incluidas para elegir; el diálogo de ajustes se abre con normalidad en el nuevo idioma."""
     assert set(voice.get_all_azure_voices(["ca-ES"])) >= {
         "ca-ES-EnricNeural-Male", "ca-ES-JoanaNeural-Female",
     }

@@ -11,7 +11,7 @@ WEBUI_MAIN = ROOT_DIR / "webui" / "Main.py"
 
 
 def _widget_by_key(elements, key):
-    """按稳定业务 key 查找经过语言后缀处理的 Streamlit 控件。"""
+    """Busca por key de negocio estable los controles de Streamlit procesados con sufijo de idioma."""
     return next(
         item
         for item in elements
@@ -70,21 +70,21 @@ def test_metaso_source_requires_confirmation_and_never_enters_task_params():
 
 
 def test_invalid_metaso_resolution_requires_an_explicit_replacement():
-    """打开设置不能把无效分辨率静默改成价格更高的默认 2K。"""
+    """Abrir los ajustes no puede cambiar en silencio una resolución inválida por el 2K por defecto, más caro."""
     test_config = dict(
         config.app,
         llm_provider="openai",
         video_source="pexels",
         metaso_minimax_resolution="720P",
     )
-    test_ui = dict(config.ui, language="zh")
+    test_ui = dict(config.ui, language="es")
     with (
         patch.object(config, "app", test_config),
         patch.object(config, "ui", test_ui),
         patch.object(config, "try_save_config", return_value=True),
     ):
         app = AppTest.from_file(str(WEBUI_MAIN), default_timeout=60)
-        app.session_state["ui_language"] = "zh"
+        app.session_state["ui_language"] = "es"
         app.session_state["settings_dialog_open"] = True
         app.session_state["settings_dialog_target_tab"] = "video"
         app.session_state["settings_material_providers"] = {"ai_video": "metaso_minimax"}
@@ -103,7 +103,7 @@ def test_invalid_metaso_resolution_requires_an_explicit_replacement():
 
 
 def test_metaso_upload_voiceover_uses_actual_audio_billing_copy():
-    """上传配音时不得用脚本文字长度冒充真实的付费任务数量。"""
+    """Al subir una voz no se puede usar la longitud del texto del guion para fingir el número real de tareas de pago."""
     test_config = dict(
         config.app,
         video_source="metaso_minimax",

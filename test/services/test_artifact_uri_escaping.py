@@ -4,7 +4,7 @@ from urllib.parse import urlsplit, unquote
 import pytest
 from app.controllers.v1.video import _task_file_to_uri
 
-@pytest.mark.parametrize("filename", ["two words.mp4", "episode#1.mp4", "50% complete.mp3", "字幕.srt"])
+@pytest.mark.parametrize("filename", ["two words.mp4", "episode#1.mp4", "50% complete.mp3", "Subtítulos.srt"])
 @pytest.mark.parametrize("endpoint", ["", "https://example.test/output"])
 def test_task_artifact_uri_preserves_filename(filename, endpoint):
     with tempfile.TemporaryDirectory() as root:

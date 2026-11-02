@@ -38,7 +38,7 @@ class TestVideoControllerHelpers(unittest.TestCase):
         return SimpleNamespace(headers=headers, method="GET")
 
     def test_sanitize_upload_filename_removes_client_path(self):
-        """Windows 和 POSIX 客户端路径都只能保留最后一段安全文件名。"""
+        """Windows y las rutas de clientes POSIX solo pueden conservar el último segmento como nombre de archivo seguro."""
         for filename, expected in (
             (r"C:\videos\clip.MOV", "clip.MOV"),
             ("../../images/photo.png", "photo.png"),
@@ -87,7 +87,7 @@ class TestVideoControllerHelpers(unittest.TestCase):
         ])
 
     def test_fastapi_startup_recovers_interrupted_cross_posts(self):
-        """API 进程启动时必须执行一次发布遗留状态恢复。"""
+        """API Al arrancar el proceso debe ejecutarse una vez la recuperación del estado pendiente de publicación."""
         from app.services import task as task_service
 
         with patch.object(task_service, "recover_interrupted_cross_posts") as recover:
@@ -122,7 +122,7 @@ class TestVideoControllerHelpers(unittest.TestCase):
         stop_dispatcher.assert_called_once_with()
 
     def test_sanitize_upload_filename_rejects_empty_name(self):
-        """空文件名和目录占位符不能进入服务端存储路径。"""
+        """Los nombres de archivo vacíos y los marcadores de directorio no pueden entrar en la ruta de almacenamiento del servidor."""
         for filename in ("", ".", "..", "/"):
             with self.subTest(filename=filename):
                 with self.assertRaises(HttpException) as raised:
@@ -130,7 +130,7 @@ class TestVideoControllerHelpers(unittest.TestCase):
                 self.assertEqual(raised.exception.status_code, 400)
 
     def test_resolve_path_maps_missing_and_unsafe_files(self):
-        """不存在文件返回 404，目录穿越等非法路径返回 403。"""
+        """Los archivos inexistentes devuelven 404, y las rutas ilegales como recorridos de directorio devuelven 403."""
         for error, expected_status in (
             ("file does not exist", 404),
             ("path escapes base directory", 403),
@@ -148,7 +148,7 @@ class TestVideoControllerHelpers(unittest.TestCase):
                 self.assertEqual(raised.exception.status_code, expected_status)
 
     def test_parse_byte_range_supports_common_player_requests(self):
-        """播放器常见的闭区间、开放区间和后缀区间都应得到准确边界。"""
+        """Los intervalos cerrados, abiertos y de sufijo habituales en los reproductores deben obtener límites exactos."""
         cases = (
             (None, (0, 9)),
             ("bytes=2-5", (2, 5)),
@@ -164,7 +164,7 @@ class TestVideoControllerHelpers(unittest.TestCase):
                 )
 
     def test_parse_byte_range_rejects_malformed_or_out_of_bounds_requests(self):
-        """非法 Range 必须返回 416，不能因 split 或 int 转换异常变成 500。"""
+        """Un Range ilegal debe devolver 416, sin convertirse en 500 por excepciones de split o de conversión int."""
         invalid_headers = (
             "items=0-1",
             "bytes=",
@@ -185,7 +185,7 @@ class TestVideoControllerTasks(unittest.TestCase):
         return SimpleNamespace(headers={"x-task-id": "request-123"}, method="GET")
 
     def test_video_task_rejects_font_outside_font_directory_before_queueing(self):
-        """非法字体路径必须在任务入队前返回 403，不产生付费后台任务。"""
+        """Una ruta de fuente ilegal debe devolver 403 antes de encolar la tarea, sin generar tareas en segundo plano de pago."""
         with tempfile.TemporaryDirectory() as temp_dir:
             font_dir = Path(temp_dir, "fonts")
             font_dir.mkdir()
@@ -208,7 +208,7 @@ class TestVideoControllerTasks(unittest.TestCase):
                     add_task.assert_not_called()
 
     def test_video_task_rejects_font_symlink_outside_font_directory(self):
-        """即使路径字符串位于字体目录内，也不能借符号链接读取目录外文件。"""
+        """Aunque la cadena de ruta esté dentro del directorio de fuentes, no se puede usar un enlace simbólico para leer archivos fuera del directorio."""
         with tempfile.TemporaryDirectory() as temp_dir:
             font_dir = Path(temp_dir, "fonts")
             font_dir.mkdir()
@@ -233,7 +233,7 @@ class TestVideoControllerTasks(unittest.TestCase):
             add_task.assert_not_called()
 
     def test_video_task_accepts_font_inside_directory_and_ignores_disabled_subtitles(self):
-        """正常字体仍能入队，关闭字幕时保留原有的未使用字体兼容行为。"""
+        """Las fuentes normales se siguen pudiendo encolar, y al desactivar los subtítulos se mantiene la compatibilidad original con fuentes no usadas."""
         with tempfile.TemporaryDirectory() as temp_dir:
             font_dir = Path(temp_dir, "fonts")
             font_dir.mkdir()
@@ -260,7 +260,7 @@ class TestVideoControllerTasks(unittest.TestCase):
                 add_task.assert_called_once()
 
     def test_create_task_queues_requested_pipeline_stage(self):
-        """创建任务应持久化初始状态，并把原请求模型与停止阶段交给队列。"""
+        """Crear una tarea debe persistir el estado inicial y pasar a la cola el modelo de petición original y la fase de parada."""
         body = MagicMock()
         body.model_dump.return_value = {"video_subject": "Coffee"}
 
@@ -285,7 +285,7 @@ class TestVideoControllerTasks(unittest.TestCase):
         )
 
     def test_create_task_removes_state_when_queue_is_full(self):
-        """队列已满时必须回滚刚创建的状态，并向调用方返回 429。"""
+        """Cuando la cola está llena hay que deshacer el estado recién creado y devolver 429 al llamador."""
         body = MagicMock()
         body.model_dump.return_value = {"video_subject": "Coffee"}
 
@@ -306,7 +306,7 @@ class TestVideoControllerTasks(unittest.TestCase):
         delete_task.assert_called_once_with("task-123")
 
     def test_create_task_removes_state_when_scheduler_fails(self):
-        """调度器未能接管任务时，不能留下永远处于 processing 的状态。"""
+        """Si el planificador no logra hacerse cargo de la tarea, no puede quedar un estado eternamente en processing."""
         body = MagicMock()
         body.model_dump.return_value = {"video_subject": "Coffee"}
         scheduling_error = RuntimeError("can't start new thread")
@@ -328,7 +328,7 @@ class TestVideoControllerTasks(unittest.TestCase):
         self.assertIsNone(state.get_task("task-123"))
 
     def test_get_all_tasks_preserves_pagination(self):
-        """任务列表响应必须包含状态层返回的总数和请求分页参数。"""
+        """La respuesta de la lista de tareas debe incluir el total devuelto por la capa de estado y los parámetros de paginación de la petición."""
         with patch.object(
             video_controller.sm.state,
             "get_all_tasks",
@@ -394,8 +394,8 @@ class TestVideoControllerTasks(unittest.TestCase):
 
     def test_task_query_returns_relative_url_without_mutating_state(self):
         """
-        endpoint 未配置时应返回相对任务 URL，且不能把展示用 URL 回写到状态，
-        否则后续请求可能基于已改写数据重复拼接路径。
+        endpoint Sin configuración se debe devolver la URL relativa de la tarea, sin volver a escribir en el estado la URL de visualización,
+        o las peticiones posteriores podrían concatenar rutas repetidamente a partir de datos ya reescritos.
         """
         task_id = "controller-task-url"
         task_dir = utils.task_dir(task_id)
@@ -435,7 +435,7 @@ class TestVideoControllerTasks(unittest.TestCase):
             shutil.rmtree(task_dir, ignore_errors=True)
 
     def test_task_query_preserves_structured_failure_details(self):
-        """失败阶段和错误信息必须通过任务查询接口原样返回。"""
+        """La fase de fallo y el mensaje de error deben devolverse tal cual a través de la interfaz de consulta de tareas."""
         failed_task = {
             "task_id": "failed-task",
             "state": const.TASK_STATE_FAILED,
@@ -456,7 +456,7 @@ class TestVideoControllerTasks(unittest.TestCase):
         self.assertEqual(response["data"], failed_task)
 
     def test_task_query_schema_documents_success_and_failure_states(self):
-        """OpenAPI 模型示例必须覆盖发布成功和生成失败两种状态。"""
+        """OpenAPI Los ejemplos del modelo deben cubrir los dos estados: publicación exitosa y generación fallida."""
         examples = TaskQueryResponse.model_json_schema()["examples"]
 
         self.assertEqual(examples[0]["data"]["cross_post_state"], "complete")
@@ -474,7 +474,7 @@ class TestVideoControllerTasks(unittest.TestCase):
         self.assertIn("TaskStatusData", list_schema["$defs"])
 
     def test_task_deletion_schema_defines_null_data_contract(self):
-        """TaskDeletionResponse 的 OpenAPI 架构必须将 data 显式声明为 null 类型。"""
+        """TaskDeletionResponse El esquema OpenAPI de debe declarar data explícitamente como tipo null."""
         schema = TaskDeletionResponse.model_json_schema()
         data_property = schema["properties"]["data"]
 
@@ -482,7 +482,7 @@ class TestVideoControllerTasks(unittest.TestCase):
         self.assertIsNone(data_property.get("default"))
 
     def test_delete_rejects_generation_and_cross_posting_tasks(self):
-        """生成中和发布中的任务都在读取目录，删除接口必须返回 409。"""
+        """Las tareas en generación y en publicación están leyendo el directorio, y la interfaz de borrado debe devolver 409."""
         busy_tasks = (
             {
                 "task_id": "generating-task",
@@ -516,7 +516,7 @@ class TestVideoControllerTasks(unittest.TestCase):
                 delete_task.assert_not_called()
 
     def test_delete_allows_completed_task(self):
-        """普通已完成任务仍应保持原有删除行为。"""
+        """Las tareas completadas normales deben mantener el comportamiento de borrado original."""
         completed_task = {
             "task_id": "completed-task",
             "state": const.TASK_STATE_COMPLETE,
@@ -546,7 +546,7 @@ class TestVideoControllerTasks(unittest.TestCase):
         delete_task.assert_called_once_with("completed-task")
 
     def test_get_and_delete_missing_task_return_404(self):
-        """查询或删除未知任务都应返回一致的 404，而不是空成功响应。"""
+        """Consultar o borrar tareas desconocidas debe devolver un 404 coherente, en lugar de una respuesta de éxito vacía."""
         with patch.object(video_controller.sm.state, "get_task", return_value=None):
             for operation in (
                 lambda: video_controller.get_task(
@@ -563,12 +563,12 @@ class TestVideoControllerTasks(unittest.TestCase):
 
 
 class TestVideoControllerCreateHTTP(unittest.TestCase):
-    """验证越界字体在真实 HTTP 入口返回 403/404，而不是创建后台任务。
+    """Verifica que las fuentes fuera de límites devuelvan 403/404 en la entrada HTTP real, en lugar de crear una tarea en segundo plano.
 
-    行为变更（PR #1664）：create_task 的字体预检改走文件服务包装
-    `_resolve_path_within_directory`，越界/穿越返回 403、字体缺失返回
-    404，与同一文件里任务产物端点的错误码保持一致；400 只留给请求体
-    数值校验等 ValueError 场景。
+    Cambio de comportamiento (PR #1664): la comprobación previa de fuentes de create_task pasa ahora por el envoltorio del servicio de archivos
+    `_resolve_path_within_directory`; fuera de límites/recorrido devuelve 403, y la fuente ausente devuelve
+    404, coherente con los códigos de error de los endpoints de artefactos de tareas del mismo archivo; 400 se reserva para casos de ValueError
+    como la validación numérica del cuerpo de la petición.
     """
 
     def setUp(self):
@@ -612,11 +612,11 @@ class TestVideoControllerListHTTP(unittest.TestCase):
 
 
 class TestVideoControllerDeleteHTTP(unittest.TestCase):
-    """DELETE /api/v1/tasks/{task_id} 的真实 HTTP 级回归测试。"""
+    """DELETE /api/v1/tasks/{task_id} Prueba de regresión real a nivel HTTP de"""
 
     def setUp(self):
         self.original_app_config = dict(config.app)
-        # 这些用例只验证任务删除协议；鉴权行为由独立测试覆盖。
+        # Estos casos solo verifican el protocolo de borrado de tareas; el comportamiento de autenticación lo cubren pruebas independientes.
         config.app["api_key"] = ""
         self.client = TestClient(asgi.app)
 
@@ -625,7 +625,7 @@ class TestVideoControllerDeleteHTTP(unittest.TestCase):
         config.app.update(self.original_app_config)
 
     def _seed_completed_task(self, task_id: str) -> str:
-        """创建一个已完成的任务，返回其存储目录路径。"""
+        """Crea una tarea completada y devuelve la ruta de su directorio de almacenamiento."""
 
         task_dir = utils.task_dir(task_id)
         video_path = os.path.join(task_dir, "final-1.mp4")
@@ -641,7 +641,7 @@ class TestVideoControllerDeleteHTTP(unittest.TestCase):
         return task_dir
 
     def test_delete_completed_task_returns_success_response(self):
-        """成功删除应返回 200, 且响应体必须是控制器的真实输出 (status/message/data)"""
+        """Un borrado exitoso debe devolver 200, y el cuerpo de la respuesta debe ser la salida real del controlador (status/message/data)"""
 
         task_id = "http-delete-success-task"
         task_dir = self._seed_completed_task(task_id)
@@ -659,8 +659,8 @@ class TestVideoControllerDeleteHTTP(unittest.TestCase):
         )
 
     def test_deleted_task_lookup_returns_404(self):
-        """删除后再次查询必须返回 404，确认任务确实从状态存储中移除，
-        而不只是删除接口本身的响应格式正确。"""
+        """Tras borrar, volver a consultar debe devolver 404, confirmando que la tarea realmente se eliminó del almacenamiento de estado,
+        y no solo que el formato de respuesta de la interfaz de borrado sea correcto."""
 
         task_id = "http-delete-lookup-task"
         task_dir = self._seed_completed_task(task_id)
@@ -671,7 +671,7 @@ class TestVideoControllerDeleteHTTP(unittest.TestCase):
 
             lookup_response = self.client.get(f"/api/v1/tasks/{task_id}")
         finally:
-            # 任务此时应已被删除；只清理可能残留的目录。
+            # La tarea ya debería estar eliminada; solo se limpia el directorio que pueda quedar.
             shutil.rmtree(task_dir, ignore_errors=True)
 
         self.assertEqual(lookup_response.status_code, 404)
@@ -686,7 +686,7 @@ class TestVideoControllerFiles(unittest.TestCase):
         return SimpleNamespace(headers=headers, method="GET")
 
     def test_upload_video_material_validates_complete_extension(self):
-        """大写合法扩展名应接受，无点号伪扩展名应拒绝。"""
+        """Las extensiones válidas en mayúsculas deben aceptarse, y las pseudoextensiones sin punto deben rechazarse."""
         upload = SimpleNamespace(
             filename=r"C:\videos\clip.MOV",
             file=BytesIO(b"video"),
@@ -737,7 +737,7 @@ class TestVideoControllerFiles(unittest.TestCase):
         self.assertNotIn("sensitive", raised.exception.message)
 
     def test_stream_video_returns_requested_bytes(self):
-        """Range 响应的正文和 Content-Range 必须与计算出的区间一致。"""
+        """Range El cuerpo y el Content-Range de la respuesta deben coincidir con el intervalo calculado."""
 
         async def consume(response):
             return b"".join([chunk async for chunk in response.body_iterator])
@@ -813,7 +813,7 @@ class TestVideoControllerFiles(unittest.TestCase):
         self.assertEqual(raised.exception.status_code, 404)
 
     def test_download_video_uses_resolved_file(self):
-        """下载响应应使用白名单目录解析后的真实路径和原始文件名。"""
+        """La respuesta de descarga debe usar la ruta real resuelta en el directorio de lista blanca y el nombre de archivo original."""
         with tempfile.TemporaryDirectory() as temp_dir:
             video_path = Path(temp_dir, "final-1.mp4")
             video_path.write_bytes(b"video")
@@ -826,24 +826,24 @@ class TestVideoControllerFiles(unittest.TestCase):
                     video_controller.download_video(self._request(), "final-1.mp4")
                 )
 
-        # macOS 的 /var 是 /private/var 符号链接，安全解析会返回真实路径。
+        # macOS El /var de es un enlace simbólico a /private/var, y la resolución segura devuelve la ruta real.
         self.assertEqual(response.path, os.path.realpath(video_path))
         self.assertEqual(response.filename, "final-1.mp4")
         self.assertEqual(response.media_type, "video/mp4")
 
     def test_download_video_encodes_content_disposition_filename(self):
         """
-        下载文件名必须按 HTTP 标准编码。
+        El nombre de archivo de descarga debe codificarse según el estándar HTTP.
 
-        普通 ASCII 文件名继续使用兼容性更好的 filename 参数；只要名称包含
-        空格、中文或响应头敏感符号，就应改用 UTF-8 filename*，避免浏览器下载
-        失败、文件名乱码，或特殊字符破坏 Content-Disposition 响应头结构。
+        Los nombres de archivo ASCII normales siguen usando el parámetro filename, más compatible; en cuanto el nombre contiene
+        espacios, caracteres no ASCII o símbolos sensibles para las cabeceras, debe usarse filename* UTF-8, para evitar que la descarga del navegador
+        falle, que el nombre salga corrupto, o que caracteres especiales rompan la estructura de la cabecera Content-Disposition.
         """
         cases = (
             ("final-1.mp4", 'attachment; filename="final-1.mp4"'),
             ("video name.mp4", "attachment; filename*=utf-8''video%20name.mp4"),
             (
-                "中文 视频.mp4",
+                "vídeo en español.mp4",
                 "attachment; filename*=utf-8''%E4%B8%AD%E6%96%87%20"
                 "%E8%A7%86%E9%A2%91.mp4",
             ),

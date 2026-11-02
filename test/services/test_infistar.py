@@ -1,4 +1,4 @@
-"""验证 Infistar 的真实 SDK 请求、默认配置和自定义覆盖。"""
+"""Verifica las peticiones reales del SDK, la configuración por defecto y las sobrescrituras personalizadas de Infistar."""
 
 import json
 from unittest.mock import patch
@@ -26,7 +26,7 @@ from app.services import llm
 def test_infistar_chat_completion_request(
     base_url, model, expected_url, expected_model
 ):
-    """通过真实 OpenAI SDK 编解码，避免只检查模拟客户端的调用参数。"""
+    """Usa la codificación/decodificación real del SDK de OpenAI, para no comprobar solo los parámetros de llamada de un cliente simulado."""
     received = []
 
     def respond(request):
@@ -41,7 +41,7 @@ def test_infistar_chat_completion_request(
                 "choices": [
                     {
                         "index": 0,
-                        "message": {"role": "assistant", "content": "测试成功"},
+                        "message": {"role": "assistant", "content": "Prueba exitosa"},
                         "finish_reason": "stop",
                     }
                 ],
@@ -64,7 +64,7 @@ def test_infistar_chat_completion_request(
         patch.object(config, "app", app_config),
         patch.object(llm, "OpenAI", make_client),
     ):
-        assert llm._generate_response("生成视频文案") == "测试成功"
+        assert llm._generate_response("Generar texto del video") == "Prueba exitosa"
 
     assert len(received) == 1
     request = received[0]
@@ -72,12 +72,12 @@ def test_infistar_chat_completion_request(
     assert request.headers["Authorization"] == "Bearer test-infistar-key"
     assert json.loads(request.content) == {
         "model": expected_model,
-        "messages": [{"role": "user", "content": "生成视频文案"}],
+        "messages": [{"role": "user", "content": "Generar texto del video"}],
     }
 
 
 def test_infistar_missing_key_does_not_send_request():
-    """选择新 Provider 后必须使用专属 Key，不能意外复用其他服务的凭据。"""
+    """Al elegir un nuevo Provider hay que usar su Key específica, sin reutilizar por accidente las credenciales de otro servicio."""
     app_config = dict(
         config.app,
         llm_provider="infistar",

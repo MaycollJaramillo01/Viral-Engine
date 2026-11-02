@@ -7,10 +7,10 @@ def resolve_path_within_directory(
     *,
     require_file: bool = True,
 ) -> str:
-    # 用户传入的路径可能是文件名、相对路径、绝对路径，也可能夹带 `../`。
-    # 这里统一解析成真实路径，并用 commonpath 判断它是否仍在允许目录内。
-    # 这样比简单判断字符串前缀可靠，可以覆盖符号链接、重复分隔符、相对路径
-    # 等场景，适用于上传目录、素材目录、任务产物目录这类白名单目录。
+    # La ruta que pasa el usuario puede ser un nombre de archivo, una ruta relativa, una ruta absoluta, o incluso incluir `../`.
+    # Aquí se resuelve siempre a la ruta real y se usa commonpath para determinar si sigue dentro del directorio permitido.
+    # Esto es más fiable que comprobar un simple prefijo de cadena, y cubre enlaces simbólicos, separadores duplicados, rutas relativas
+    # y otros casos; sirve para directorios de lista blanca como el de subidas, el de material o el de artefactos de tareas.
     if not unsafe_path:
         raise ValueError("empty path is not allowed")
 
@@ -23,7 +23,7 @@ def resolve_path_within_directory(
     try:
         common_path = os.path.commonpath([base_dir_real, resolved_path])
     except ValueError as exc:
-        # Windows 下不同盘符会触发 ValueError，这类路径一定不属于允许目录。
+        # Windows En , unidades distintas provocan ValueError, y esas rutas seguro que no pertenecen al directorio permitido.
         raise ValueError("path is outside the allowed directory") from exc
 
     if common_path != base_dir_real:

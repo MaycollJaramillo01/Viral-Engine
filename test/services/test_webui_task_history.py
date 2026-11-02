@@ -32,10 +32,10 @@ TASK_HISTORY_CONSTANTS = {
 
 def _load_task_history_helpers():
     """
-    从 WebUI 入口中隔离加载不依赖 Streamlit 的任务历史纯函数。
+    Carga de forma aislada desde el punto de entrada de la WebUI las funciones puras del historial de tareas que no dependen de Streamlit.
 
-    直接导入 Main.py 会执行整套页面渲染。测试只编译目标常量和函数，既验证
-    合并后的真实实现，也避免为了单元测试重新拆出一个只有少量函数的生产模块。
+    Importar directamente Main.py ejecutaría todo el renderizado de la página. La prueba solo compila las constantes y funciones objetivo, verificando
+    la implementación real fusionada y evitando separar, solo para pruebas unitarias, un módulo de producción con pocas funciones.
     """
     tree = ast.parse(WEBUI_MAIN.read_text(encoding="utf-8"))
     selected_nodes = []
@@ -67,7 +67,7 @@ get_unmet_restore_upload_requirements = TASK_HISTORY_NAMESPACE[
 
 
 def test_find_final_task_video_ignores_intermediate_files(tmp_path):
-    """任务历史只能把 final 成片识别为完成，不能使用合成中间文件。"""
+    """El historial de tareas solo puede reconocer como completado el video final, sin usar archivos intermedios de composición."""
     for file_name in (
         "combined-1.mp4",
         "temp-clip-1.mp4",
@@ -79,7 +79,7 @@ def test_find_final_task_video_ignores_intermediate_files(tmp_path):
 
 
 def test_find_final_task_video_returns_first_numbered_output(tmp_path):
-    """多成片任务与运行时结果保持一致，默认播放序号最小的最终视频。"""
+    """Las tareas con varios videos finales coinciden con el resultado en tiempo de ejecución, y por defecto se reproduce el video final de menor número."""
     (tmp_path / "final-10.mp4").touch()
     (tmp_path / "final-2.mp4").touch()
     (tmp_path / "final-1.mp4").touch()
@@ -100,8 +100,8 @@ def test_build_video_download_name_handles_empty_and_long_subjects():
 
 
 def test_build_video_download_name_avoids_windows_reserved_names():
-    # 使用官方规则的显式清单，避免测试复制生产代码的 range/comprehension；
-    # 如果实现误写范围，集合相等断言会立即失败，而不是与实现一起漏测。
+    # Usa una lista explícita de las reglas oficiales, para que la prueba no copie el range/comprehension del código de producción;
+    # si la implementación escribe mal el rango, la aserción de igualdad de conjuntos falla de inmediato, en lugar de omitir la prueba junto con la implementación.
     reserved_names = {
         "CON",
         "PRN",
@@ -148,7 +148,7 @@ def test_build_video_download_name_avoids_windows_reserved_names():
 
 
 def test_build_video_download_name_does_not_overmatch_similar_names():
-    """只处理 Windows 真实保留名，不能误伤相邻但合法的普通主题。"""
+    """Solo trata los nombres reservados reales de Windows, sin afectar a temas normales parecidos pero legales."""
 
     for safe_name in ("COM0", "COM10", "LPT0", "LPT10", "COM⁴", "LPT⁴"):
         assert build_video_download_name(safe_name, 1, 1) == f"{safe_name}.mp4"
@@ -190,7 +190,7 @@ def test_restore_requirements_allow_explicit_replacements():
 
 
 def test_restore_requirements_require_file_in_upload_voice_mode():
-    """恢复上传配音任务时，继续使用上传模式必须重新选择音频文件。"""
+    """Al restaurar una tarea con voz subida, seguir usando el modo de subida exige volver a elegir el archivo de audio."""
     requirements = build_restore_upload_requirements(
         {
             "video_source": "pexels",
@@ -210,7 +210,7 @@ def test_restore_requirements_require_file_in_upload_voice_mode():
 
 
 def test_restore_requirements_allow_replacing_upload_with_other_voice_modes():
-    """用户主动切换到自动配音或无配音时，不再强制恢复历史上传文件。"""
+    """Cuando el usuario cambia por su cuenta a voz automática o sin voz, ya no se fuerza la restauración del archivo subido histórico."""
     requirements = build_restore_upload_requirements(
         {
             "video_source": "pexels",

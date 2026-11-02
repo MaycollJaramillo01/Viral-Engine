@@ -1,4 +1,4 @@
-"""组合符必须附着于保留的字符，不能由已删除的 emoji 留下空标签。"""
+"""Los caracteres combinantes deben ir unidos a un carácter conservado, sin que un emoji eliminado deje una etiqueta vacía."""
 
 import json
 import unicodedata
@@ -27,7 +27,7 @@ from app.services import llm
     ],
 )
 def test_hashtag_keeps_marks_attached_to_retained_letters(tag):
-    """保留真实语言的元音、声调及 CJK 字形变体，不全局删除 Mark 字符。"""
+    """Conserva las vocales y tonos de idiomas reales y las variantes de glifos CJK, sin borrar globalmente los caracteres Mark."""
     assert llm._normalize_hashtags([tag], count=5) == [tag]
 
 
@@ -78,11 +78,11 @@ def test_string_hashtags_keep_language_marks_after_discarding_emoji():
 
 @pytest.mark.parametrize("platform", list(llm.SOCIAL_PLATFORMS))
 def test_social_metadata_api_uses_cleaned_tags_without_displacing_valid_ones(platform):
-    """固定模型输出，真实运行 API 的解析、清洗、去重和数量限制。"""
+    """Fija la salida del modelo y ejecuta de verdad el análisis, limpieza, deduplicación y límite de cantidad de la API."""
     response_text = json.dumps(
         {
-            "title": "旅行",
-            "caption": "清晨旅行。",
+            "title": "viaje",
+            "caption": "Viaje al amanecer.",
             "hashtags": [
                 "#☕️",
                 "#coffee☕️",
@@ -98,7 +98,7 @@ def test_social_metadata_api_uses_cleaned_tags_without_displacing_valid_ones(pla
     with patch.object(llm, "_generate_response", return_value=response_text):
         response = TestClient(app).post(
             "/api/v1/social-metadata",
-            json={"video_subject": "旅行", "platform": platform},
+            json={"video_subject": "viaje", "platform": platform},
         )
 
     assert response.status_code == 200
@@ -112,8 +112,8 @@ def test_social_metadata_api_uses_cleaned_tags_without_displacing_valid_ones(pla
 def test_keycap_tags_do_not_displace_other_youtube_tags():
     response_text = json.dumps(
         {
-            "title": "旅行",
-            "caption": "收藏旅行技巧。",
+            "title": "viaje",
+            "caption": "Guarda estos consejos de viaje.",
             "hashtags": ["#1️⃣", "#1", "#Travel", "#Coffee"],
         },
         ensure_ascii=False,
@@ -121,7 +121,7 @@ def test_keycap_tags_do_not_displace_other_youtube_tags():
     with patch.object(llm, "_generate_response", return_value=response_text):
         response = TestClient(app).post(
             "/api/v1/social-metadata",
-            json={"video_subject": "旅行", "platform": "youtube_shorts"},
+            json={"video_subject": "viaje", "platform": "youtube_shorts"},
         )
 
     assert response.status_code == 200

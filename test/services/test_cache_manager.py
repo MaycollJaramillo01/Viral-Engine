@@ -9,7 +9,7 @@ from app.services import cache_manager
 
 
 class TestVideoCacheManager(unittest.TestCase):
-    """验证缓存管理只处理受控文件，并按元数据完成轻量统计与清理。"""
+    """Verifica que la gestión de caché solo trate archivos controlados y complete estadísticas y limpieza ligeras según los metadatos."""
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -33,7 +33,7 @@ class TestVideoCacheManager(unittest.TestCase):
 
     def test_stats_only_include_managed_top_level_regular_files(self):
         """
-        未知文件、嵌套文件和符号链接可能属于用户，不能进入容量统计或清理候选。
+        Los archivos desconocidos, anidados y los enlaces simbólicos pueden ser del usuario y no pueden entrar en las estadísticas de capacidad ni en los candidatos a limpieza.
         """
         now = 2_000_000_000.0
         self._create_cache_file("a" * 32, 10, now - 40 * 86400)
@@ -44,7 +44,7 @@ class TestVideoCacheManager(unittest.TestCase):
         (nested_dir / f"vid-{'c' * 32}.mp4").write_bytes(b"nested")
 
         symlink_path = self.cache_dir / f"vid-{'d' * 32}.mp4"
-        # Windows 未开启开发者模式时创建符号链接可能没有权限，不影响其余断言。
+        # Windows Sin el modo desarrollador activado puede no haber permiso para crear enlaces simbólicos, lo que no afecta al resto de aserciones.
         with contextlib.suppress(OSError, NotImplementedError):
             symlink_path.symlink_to(self.cache_dir / "personal.mp4")
 

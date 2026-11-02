@@ -32,10 +32,10 @@ def get_api_key(request: Request):
 
 
 def get_api_key_values(request: Request) -> list[str]:
-    """返回请求中全部 API Key Header，保留重复值用于安全校验。"""
+    """Devuelve todas las cabeceras API Key de la petición, conservando los valores duplicados para la validación de seguridad."""
 
-    # Starlette Headers 提供 getlist()，可以区分代理或客户端发送的重复 Header。
-    # 单元测试中的轻量 Request 替身只使用普通 dict，因此保留兼容回退。
+    # Starlette Headers ofrece getlist(), que permite distinguir cabeceras duplicadas enviadas por un proxy o cliente.
+    # Los dobles ligeros de Request en las pruebas unitarias solo usan un dict normal, así que se mantiene un fallback compatible.
     get_list = getattr(request.headers, "getlist", None)
     if callable(get_list):
         return [value for value in get_list("x-api-key") if isinstance(value, str)]
@@ -48,19 +48,19 @@ def verify_token(
     request: Request,
     x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
 ):
-    """按配置决定是否校验 API Key。
+    """Decide según la configuración si se valida la API Key.
 
-    空 Key 保留现有的本地免认证模式；管理员显式配置非空 Key 后，API
-    路由和任务产物下载都会要求客户端通过 ``x-api-key`` 请求头提供同一
-    个值。参数声明同时让 Swagger 展示该请求头，便于受保护环境调试。
+    Una Key vacía conserva el modo local sin autenticación; cuando el administrador configura explícitamente una Key no vacía,API
+    las rutas y las descargas de artefactos de tareas exigen que el cliente envíe ese mismo
+    valor en la cabecera ``x-api-key``. La declaración del parámetro también hace que Swagger muestre esa cabecera, facilitando la depuración en entornos protegidos.
     """
 
     configured_key = config.app.get("api_key", "")
     if configured_key in (None, ""):
         return None
 
-    # 配置项必须是字符串。这里拒绝列表、数字等错误类型，避免字符串隐式
-    # 转换产生难以发现的认证行为；错误信息也不包含实际 Key。
+    # El elemento de configuración debe ser una cadena. Aquí se rechazan listas, números y otros tipos erróneos, para evitar que la conversión implícita a cadena
+    # produzca comportamientos de autenticación difíciles de detectar; el mensaje de error tampoco incluye la Key real.
     if not isinstance(configured_key, str):
         raise HttpException(
             task_id=get_task_id(request),
@@ -68,9 +68,9 @@ def verify_token(
             message="API authentication is misconfigured",
         )
 
-    # FastAPI 参数用于在 OpenAPI 中声明 x-api-key；实际校验始终读取 Request，
-    # 才能识别同名 Header 被重复发送的情况。普通客户端和反向代理对重复 Header
-    # 的取值顺序可能不同，因此必须拒绝，而不能隐式采用第一个或最后一个值。
+    # FastAPI El parámetro sirve para declarar x-api-key en OpenAPI; la validación real siempre lee el Request,
+    # para poder detectar cuando se envía repetida una cabecera con el mismo nombre. Los clientes normales y los proxies inversos pueden ordenar de forma distinta Header
+    # los valores duplicados, por lo que hay que rechazarlos en lugar de adoptar implícitamente el primero o el último.
     token_values = get_api_key_values(request)
     if not token_values and isinstance(x_api_key, str):
         token_values = [x_api_key]
@@ -82,9 +82,9 @@ def verify_token(
             message="invalid API key",
         )
 
-    # compare_digest 对 str 只支持 ASCII。请求 Header 属于不可信输入，攻击者
-    # 可以发送 Latin-1 字符触发 TypeError。统一编码为 UTF-8 bytes 后既保留
-    # 恒定时间比较，也支持 TOML 中合法的 Unicode Key。
+    # compare_digest solo admite ASCII para str. Las cabeceras de la petición son entrada no confiable y un atacante
+    # puede enviar caracteres Latin-1 para provocar un TypeError. Codificar todo como bytes UTF-8 conserva
+    # la comparación en tiempo constante y admite también Keys Unicode válidas en TOML.
     token = token_values[0]
     if not secrets.compare_digest(
         token.encode("utf-8"), configured_key.encode("utf-8")

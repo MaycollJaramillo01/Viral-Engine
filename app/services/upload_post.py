@@ -164,9 +164,9 @@ class UploadPostService:
 
     @property
     def youtube_made_for_kids(self) -> bool:
-        # 未配置时，后续 YouTube 上传显式声明为非面向儿童；儿童内容需设置为 true。
-        # 这与旧版省略声明字段不同，但不会修改已上传的视频。
-        # 上传前严格校验类型，避免将 TOML 字符串 "false" 当作真值而误报受众。
+        # Si no está configurado, las siguientes subidas a YouTube se declaran explícitamente como no dirigidas a niños; el contenido infantil debe establecerse en true.
+        # Esto difiere de la versión anterior, que omitía el campo de declaración, pero no modifica los videos ya subidos.
+        # Se valida estrictamente el tipo antes de subir, para no tomar la cadena TOML "false" como verdadera e informar mal de la audiencia.
         return config.app.get("upload_post_youtube_made_for_kids", False)
 
     def is_configured(self) -> bool:
@@ -194,7 +194,7 @@ class UploadPostService:
 
         has_youtube = any(p.startswith("youtube") for p in platforms)
         if has_youtube:
-            # 后台任务传入排队时的声明快照；直接调用服务时才读取当前配置。
+            # La tarea en segundo plano pasa la instantánea de la declaración del momento de encolar; solo al llamar directamente al servicio se lee la configuración actual.
             made_for_kids = (youtube_extra or {}).get(
                 "selfDeclaredMadeForKids", self.youtube_made_for_kids
             )
@@ -233,8 +233,8 @@ class UploadPostService:
                     data.append(('platform[]', platform))
 
                 if has_youtube:
-                    # multipart 表单使用小写布尔字符串，且不能依赖 LLM 元数据
-                    # 是否存在；只要发布到 YouTube，就显式传递用户的受众声明。
+                    # multipart El formulario usa cadenas booleanas en minúsculas y no puede depender de que existan los metadatos del LLM
+                    # ; siempre que se publique en YouTube se pasa explícitamente la declaración de audiencia del usuario.
                     data.append(('selfDeclaredMadeForKids', str(made_for_kids).lower()))
                     # Privacy is an account/user setting, independent of optional
                     # generated titles and descriptions. Preserve queued overrides.

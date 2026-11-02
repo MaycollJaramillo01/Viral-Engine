@@ -1,7 +1,7 @@
-"""显式启用的真实服务测试；普通 CI 不需要安装或访问 Kokoro。
+"""Prueba con el servicio real activada explícitamente; la CI normal no necesita instalar ni acceder a Kokoro.
 
-启动本机服务后，设置 MPT_KOKORO_TEST_BASE_URL=http://127.0.0.1:8880/v1
-运行本文件。测试只合成短文本，不调用 LLM、素材平台或发布接口。
+Tras arrancar el servicio local, define MPT_KOKORO_TEST_BASE_URL=http://127.0.0.1:8880/v1
+y ejecuta este archivo. La prueba solo sintetiza texto corto, sin llamar al LLM, plataformas de material ni interfaces de publicación.
 """
 
 import os
@@ -31,7 +31,7 @@ def test_live_voice_discovery(live_config):
 
 @pytest.mark.parametrize("speaker, text", [
     ("af_heart", "Artificial intelligence is changing everyday life."),
-    ("zf_xiaobei", "人工智能正在改变我们的生活。合理使用技术，让每个人受益。"),
+    ("zf_xiaobei", "La inteligencia artificial está cambiando nuestras vidas. Usemos la tecnología con criterio para que todos se beneficien."),
     ("ff_siwis", "Bonjour ! L'intelligence artificielle nous aide à apprendre."),
     ("ef_dora", "La inteligencia artificial mejora nuestra vida cotidiana."),
     ("if_sara", "L'intelligenza artificiale migliora la vita di ogni giorno."),

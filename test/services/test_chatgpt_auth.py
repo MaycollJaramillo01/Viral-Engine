@@ -121,7 +121,7 @@ def test_real_loopback_callback_registers_and_saves_verified_identity(issuer):
         wrong = browser.get(attempt.redirect_uri, params={"state": "wrong"}, timeout=5)
         assert wrong.status_code == 400
         unicode_state = browser.get(
-            attempt.redirect_uri, params={"state": "错误"}, timeout=5
+            attempt.redirect_uri, params={"state": "error"}, timeout=5
         )
         assert unicode_state.status_code == 400
         assert attempt.status == "pending"

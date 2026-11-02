@@ -1,4 +1,4 @@
-"""Fluxion AI 接入回归：使用真实 SDK 编解码，HTTP 层不访问外网或消耗额度。"""
+"""Fluxion AI Regresión de integración: usa la codificación/decodificación real del SDK, y la capa HTTP no accede a Internet ni consume cuota."""
 
 import json
 from unittest.mock import patch
@@ -28,7 +28,7 @@ from app.services import llm
 def test_fluxionai_defaults_and_group_overrides(
     base_url, model, expected_url, expected_model
 ):
-    """空配置使用默认值，分组自定义值不被覆盖；其他 Provider 的配置保持原样。"""
+    """Una configuración vacía usa los valores por defecto, los valores personalizados del grupo no se sobrescriben, y la configuración de otros Providers se mantiene igual."""
     snapshot = dict(config.app)
     requests = []
 
@@ -38,7 +38,7 @@ def test_fluxionai_defaults_and_group_overrides(
         assert request.headers["Authorization"] == "Bearer test-fluxion-key"
         assert json.loads(request.content) == {
             "model": expected_model,
-            "messages": [{"role": "user", "content": "生成中文文案"}],
+            "messages": [{"role": "user", "content": "Generar texto en español"}],
         }
         return httpx.Response(
             200,
@@ -50,14 +50,14 @@ def test_fluxionai_defaults_and_group_overrides(
                 "choices": [
                     {
                         "index": 0,
-                        "message": {"role": "assistant", "content": "你好，世界！"},
+                        "message": {"role": "assistant", "content": "¡Hola, mundo!"},
                         "finish_reason": "stop",
                     }
                 ],
             },
         )
 
-    # 保留真实 SDK 的 URL 拼接和响应解析，只替换 HTTP 传输层，避免 mock 掩盖协议问题。
+    # Se conserva la concatenación de URL y el análisis de respuestas del SDK real, sustituyendo solo la capa de transporte HTTP, para que los mocks no oculten problemas de protocolo.
     with httpx.Client(transport=httpx.MockTransport(respond)) as http_client:
         with OpenAI(
             api_key="test-fluxion-key",
@@ -67,7 +67,7 @@ def test_fluxionai_defaults_and_group_overrides(
         ) as client:
             with patch.object(llm, "OpenAI", return_value=client) as factory:
                 result = llm._generate_response(
-                    "生成中文文案",
+                    "Generar texto en español",
                     app_config={
                         "llm_provider": "fluxionai",
                         "fluxionai_api_key": "test-fluxion-key",
@@ -79,13 +79,13 @@ def test_fluxionai_defaults_and_group_overrides(
                     api_key="test-fluxion-key",
                     base_url=base_url.strip() or "https://fluxionai.space/v1",
                 )
-    assert result == "你好，世界！"
+    assert result == "¡Hola, mundo!"
     assert len(requests) == 1
     assert config.app == snapshot
 
 
 def test_fluxionai_missing_key_fails_before_network():
-    """缺少密钥时沿用统一错误提示，不创建客户端或发起付费请求。"""
+    """Si falta la clave se usa el mensaje de error unificado, sin crear el cliente ni lanzar peticiones de pago."""
     with patch.object(llm, "OpenAI") as factory:
         result = llm._generate_response(
             "test", app_config={"llm_provider": "fluxionai"}
@@ -97,7 +97,7 @@ def test_fluxionai_missing_key_fails_before_network():
 
 @pytest.mark.parametrize("status", [401, 403, 429, 500])
 def test_fluxionai_http_errors_are_not_successful_text(status):
-    """鉴权、分组权限、限流和服务端错误必须走错误路径，不能被当成正常文案。"""
+    """Los errores de autenticación, permisos de grupo, límites de tasa y del servidor deben ir por la ruta de error, sin tratarse como texto normal."""
 
     def respond(request):
         return httpx.Response(
@@ -125,7 +125,7 @@ def test_fluxionai_http_errors_are_not_successful_text(status):
 
 
 def test_fluxionai_registry_metadata():
-    """锁定默认模型、协议、推广参数和模型链接，避免不同入口的信息不一致。"""
+    """Fija el modelo por defecto, el protocolo, los parámetros promocionales y los enlaces de modelos, para que la información no sea incoherente entre entradas."""
     provider = get_llm_provider("fluxionai")
     assert provider.default_model == "gpt-5.5"
     assert provider.default_base_url == "https://fluxionai.space/v1"

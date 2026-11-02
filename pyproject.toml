@@ -1,6 +1,6 @@
-# 说明：
-# 1. 主依赖来源统一收敛到 pyproject.toml。
-# 2. 运行环境通过 uv.lock 固定，避免不同机器解析出不同版本组合。
+# Notas:
+# 1. las fuentes de las dependencias principales se centralizan en pyproject.toml.
+# 2. el entorno de ejecución se fija con uv.lock, para que distintas máquinas no resuelvan combinaciones de versiones distintas.
 [build-system]
 requires = ["hatchling>=1.27.0"]
 build-backend = "hatchling.build"
@@ -23,7 +23,7 @@ dependencies = [
     "uvicorn==0.32.1",
     "openai==2.24.0",
     "faster-whisper==1.1.0",
-    # 与 requirements.txt 保持一致：PyAV 19 移除了 Whisper 使用的参数。
+    # Coherente con requirements.txt: PyAV 19 eliminó parámetros que usa Whisper.
     "av<19",
     "toml==0.10.2",
     "imageio-ffmpeg==0.6.0",
@@ -42,7 +42,7 @@ dependencies = [
     "google-genai==2.11.0",
     "pyjwt[crypto]>=2.10.1,<3",
     "filelock>=4.2.1,<5",
-    # 阿拉伯字母字幕的整形与绘制（HarfBuzz + FreeType，wheel 自带，无需系统库）。
+    # Modelado y dibujo de subtítulos en alfabeto árabe (HarfBuzz + FreeType, incluidos en el wheel, sin bibliotecas del sistema).
     "khatt[video]==0.4.0",
 ]
 
@@ -69,21 +69,21 @@ dev = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# WebUI 需要先把项目根目录加入 sys.path，随后才能导入 app 包。
+# WebUI Primero hay que añadir el directorio raíz del proyecto a sys.path, y luego se puede importar el paquete app.
 "webui/Main.py" = ["E402"]
 
 [tool.coverage.run]
-# 统计分支覆盖率可以识别“代码行执行了，但条件的另一条分支从未验证”的情况，
-# 比只统计行覆盖率更适合作为 CI 质量基线。CLI 和 WebUI 都属于生产入口，
-# 因此与 app 服务层、服务启动入口和面向 Agent 用户发布的 Skill 脚本一起
-# 纳入统计，避免覆盖率只反映局部模块。
+# Medir la cobertura de ramas permite detectar casos en que «la línea de código se ejecutó, pero la otra rama de la condición nunca se verificó»,
+# y es mejor base de calidad para la CI que medir solo la cobertura de líneas. El CLI y la WebUI son entradas de producción,
+# así que se incluyen en la medición junto con la capa de servicios de app, la entrada de arranque del servicio y los scripts de Skill publicados para usuarios de Agent
+# , para que la cobertura no refleje solo módulos parciales.
 branch = true
 source = ["app", "cli", "webui", "main", "docs/skill"]
 
 [tool.coverage.report]
-# Python 3.11 和 3.13 完整测试的实测分支覆盖率均超过 70.4%。以 70%
-# 作为稳定底线，可以固化失败状态、异步发布恢复和 Redis 原子更新测试，
-# 同时为不同 Python 版本与操作系统的少量分支差异保留余量。
+# Python 3.11 y 3.13, con pruebas completas, superan en mediciones reales el 70.4 % de cobertura de ramas. Tomar 70%
+# como suelo estable permite consolidar las pruebas de estado de fallo, recuperación de publicación asíncrona y actualización atómica de Redis,
+# dejando margen para pequeñas diferencias de ramas entre versiones de Python y sistemas operativos.
 fail_under = 70
 show_missing = true
 skip_covered = true
@@ -91,8 +91,8 @@ skip_covered = true
 [tool.hatch.build.targets.wheel]
 packages = ["app", "webui"]
 
-# 字体保留中英文默认字体和越南语字体。两个大体积备用字重不进入安装包，
-# 避免 wheel 超过 PyPI 默认文件大小限制；源码版的字体文件保持原样。
+# Se conservan las fuentes por defecto para chino e inglés y la fuente vietnamita. Los dos pesos alternativos de gran tamaño no entran en el paquete de instalación,
+# para que el wheel no supere el límite de tamaño de archivo por defecto de PyPI; los archivos de fuentes de la versión de código fuente se mantienen igual.
 [tool.hatch.build.targets.wheel.force-include]
 "cli.py" = "app/cli.py"
 "config.example.toml" = "app/_assets/config.example.toml"
@@ -110,7 +110,7 @@ packages = ["app", "webui"]
 exclude = ["**/.DS_Store", "**/__pycache__", "**/*.pyc", "**/.streamlit"]
 
 [tool.hatch.build.targets.sdist]
-# 使用白名单，禁止本机配置、凭据、storage、AGENTS.md 等混入源码发行包。
+# Usa una lista blanca, prohibiendo que la configuración local, credenciales, storage, AGENTS.md y similares se mezclen en el paquete de código fuente.
 include = [
     "/app", "/cli.py", "/webui", "/config.example.toml", "/pyproject.toml",
     "/uv.lock", "/LICENSE", "/docs/pypi-description.md", "/docs/packaging.md",

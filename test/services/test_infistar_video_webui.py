@@ -1,4 +1,4 @@
-"""真实渲染新视频源及独立凭据，切换模型不得沿用上一模型的付费确认。"""
+"""Renderiza de verdad la nueva fuente de video y sus credenciales independientes; al cambiar de modelo no se puede mantener la confirmación de pago del modelo anterior."""
 
 from pathlib import Path
 import json
@@ -12,7 +12,7 @@ from app.config import config
 WEBUI = Path(__file__).parents[2] / "webui/Main.py"
 
 
-@pytest.mark.parametrize("language", ["zh", "en", "de"])
+@pytest.mark.parametrize("language", ["es", "en", "de"])
 def test_infistar_video_models_specs_and_billing_confirmation(language):
     values = {
         "llm_provider": "infistar",

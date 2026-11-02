@@ -10,7 +10,7 @@ from app.services import video
 
 class TestSubtitleBackgroundSettings(unittest.TestCase):
     def test_subtitle_background_is_disabled_by_default(self):
-        """新任务和独立字幕接口都不应在用户未指定时渲染字幕背景。"""
+        """Ni las tareas nuevas ni la interfaz de subtítulos independiente deben renderizar fondo de subtítulo si el usuario no lo indica."""
         video_params = VideoParams(video_subject="default subtitle background")
         subtitle_request = SubtitleRequest(video_script="default subtitle background")
 
@@ -19,8 +19,8 @@ class TestSubtitleBackgroundSettings(unittest.TestCase):
 
     def test_all_locales_include_subtitle_background_labels(self):
         """
-        WebUI 新增字幕背景开关和颜色选择器后，所有已有语言都必须包含对应
-        翻译 key，避免某些语言界面直接显示英文内部 key。
+        WebUI Tras añadir el interruptor de fondo de subtítulo y el selector de color, todos los idiomas existentes deben incluir las
+        key de traducción correspondientes, para que ninguna interfaz muestre directamente la key interna en inglés.
         """
         i18n_dir = Path(__file__).parent.parent.parent / "webui" / "i18n"
         required_keys = {
@@ -41,8 +41,8 @@ class TestSubtitleBackgroundSettings(unittest.TestCase):
 
     def test_video_params_accepts_disabled_and_colored_subtitle_background(self):
         """
-        UI 会根据开关向后端传递 False 或颜色字符串。这里验证 schema 仍然
-        接受这两种值，避免后续依赖或类型调整破坏 WebUI 与合成逻辑的契约。
+        UI pasa al backend False o una cadena de color según el interruptor. Aquí se verifica que el schema siga
+        aceptando ambos valores, para que futuros cambios de dependencias o tipos no rompan el contrato entre la WebUI y la composición.
         """
         base_params = {
             "video_subject": "subtitle background smoke",
@@ -62,9 +62,9 @@ class TestSubtitleBackgroundSettings(unittest.TestCase):
 
     def test_visible_text_position_centers_actual_mask_bounds(self):
         """
-        TextClip 的画布会包含字体行高和 baseline 空白，直接居中画布会让
-        字幕在背景里看起来偏下。这里用一个假 mask 模拟“可见文字像素
-        在画布下半部分”的情况，验证 helper 会按真实可见区域重新计算 y。
+        TextClip el lienzo incluye la altura de línea de la fuente y el espacio de baseline; centrar el lienzo directamente haría que
+        el subtítulo pareciera desplazado hacia abajo dentro del fondo. Aquí se usa una mask falsa para simular que «los píxeles de texto visibles
+        están en la mitad inferior del lienzo«, verificando que el helper recalcula y según la región visible real.
         """
 
         class FakeMask:
@@ -83,8 +83,8 @@ class TestSubtitleBackgroundSettings(unittest.TestCase):
         )
 
         self.assertEqual(x, 0)
-        # 可见像素高度为 34px，放在 93px 容器中应上下各约 29px；
-        # 因为 mask 顶部从 12px 开始，所以 TextClip 本身需要向上移动到 18px。
+        # La altura de píxeles visibles es de 34px; en un contenedor de 93px debería quedar unos 29px arriba y abajo;
+        # como la mask empieza en 12px, el propio TextClip debe subir a 18px.
         self.assertEqual(y, 18)
 
     def test_detects_indistinguishable_subtitle_colors(self):
@@ -127,12 +127,12 @@ class TestSubtitleBackgroundSettings(unittest.TestCase):
 
         self.assertFalse(
             video.subtitle_font_supports_text(
-                str(fonts_dir / "BeVietnamPro-Bold.ttf"), "人工智能改变生活"
+                str(fonts_dir / "BeVietnamPro-Bold.ttf"), "La inteligencia artificial cambia la vida"
             )
         )
         self.assertTrue(
             video.subtitle_font_supports_text(
-                str(fonts_dir / "MicrosoftYaHeiBold.ttc"), "人工智能改变生活"
+                str(fonts_dir / "MicrosoftYaHeiBold.ttc"), "La inteligencia artificial cambia la vida"
             )
         )
         self.assertTrue(
@@ -143,8 +143,8 @@ class TestSubtitleBackgroundSettings(unittest.TestCase):
 
     def test_wrap_text_keeps_closing_punctuation_with_text(self):
         """
-        中文长句按字符换行时，句号等闭合标点不能独占一行，否则字幕背景
-        会被一个单独的小点撑高。这里复现大字号中文长句的边界情况。
+        Al partir frases largas en chino por caracteres, la puntuación de cierre como el punto no puede quedar sola en una línea, o el fondo del subtítulo
+        se estiraría por un punto suelto. Aquí se reproduce el caso límite de una frase china larga con tamaño de letra grande.
         """
         font_path = (
             Path(__file__).parent.parent.parent

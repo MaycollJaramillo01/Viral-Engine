@@ -1,4 +1,4 @@
-[English](#en-v1.3.9) | [中文](#cn-v1.3.9)
+[English](#en-v1.3.9) | [Español](#cn-v1.3.9)
 
 <h2 id="en-v1.3.9">Highlights</h2>
 
@@ -59,59 +59,59 @@ Thanks to all contributors and everyone who reported issues and helped test thes
 
 ---
 
-<h2 id="cn-v1.3.9">重点更新</h2>
+<h2 id="cn-v1.3.9">Novedades principales</h2>
 
-- 支持通过 pip 安装官方 **`mpt` 包**，使用 `mpt webui` 启动界面，或通过 `mpt cli` 生成视频。
-- 新增**图片动态效果选项**，本地图片和 AI 生成图片均可选择“静止”或“缓慢放大”，默认保留缓慢放大。
-- 新增 Kimi Code 订阅接入，支持浏览器授权登录，并优化登录窗口布局、状态更新和取消操作。
-- 新增可选的**本地 SDXL 生图服务**，通过 OpenAI 兼容接口接入图片素材生成，支持空闲时释放 GPU 显存。
-- 新增 Opper、onomeo、Muse Spark 和 EmpirioLabs AI 大模型服务，完善巴西葡萄牙语界面翻译。
-- 新增**诊断日志设置**，支持在 WebUI 中即时调整日志等级，按需记录经过脱敏和长度限制的 API 请求参数。
+- Instalación mediante pip del **paquete oficial `mpt`**: usa `mpt webui` para iniciar la interfaz o `mpt cli` para generar videos.
+- Nueva **opción de efecto dinámico de imagen**: tanto las imágenes locales como las generadas por IA pueden elegir «estática» o «zoom lento», con zoom lento por defecto.
+- Integración de la suscripción Kimi Code, con inicio de sesión autorizado en el navegador, y mejoras en el diseño de la ventana de inicio de sesión, la actualización de estado y la cancelación.
+- Nuevo **servicio local opcional de generación de imágenes SDXL**, conectado a la generación de material de imagen mediante una interfaz compatible con OpenAI, con liberación de memoria de GPU en reposo.
+- Nuevos servicios de modelos grandes Opper, onomeo, Muse Spark y EmpirioLabs AI, y mejoras en la traducción de la interfaz al portugués de Brasil.
+- Nuevos **ajustes de logs de diagnóstico**, que permiten ajustar al instante el nivel de log en la WebUI y registrar bajo demanda los parámetros de peticiones API anonimizados y con límite de longitud.
 
-## 修复与改进
+## Correcciones y mejoras
 
-- 修复灰度图片亮度、透明图片背景、缩放蒙版对齐和字幕背景颜色问题；改善短片段转场、背景音乐淡出和拼接路径中的特殊字符处理。
-- 隔离并发任务的图片中间文件，改善图片缓存标识并校验下载缓存；批量生成部分失败时，保留已经完成的视频。
-- 修复部分配音服务的语速、音量和音频格式处理，完善远程音频校验；替换音频准备完成前保留已有文件。
-- 改善字幕时间戳舍入、长词换行、Unicode 字符和停顿标签识别，避免纯符号行和分隔线干扰字幕时间轴估算。
-- 修复中文、日文备用社交标题使用整篇脚本的问题；改善 JSON 提取、推理内容过滤、Markdown 文案清理和素材搜索词校验。
-- 补齐支持的本地上传格式，包括多图相机 JPEG；改善 WebUI 历史视频检查、任务删除状态、字幕预览和模型连接错误提示。
-- 支持生成文件的 HEAD 请求，完善范围下载、参数错误提示，以及 Redis 任务状态更新和删除保护。
-- 减少语音请求在响应丢失或重定向后被重复提交的风险，保留 Upload-Post 请求追踪信息，并改善 WaveSpeed 提交失败的识别。
-- 更新 Edge TTS，修复相关 403 问题；限制 PyAV 版本以兼容 Whisper，修复 Windows 缓存清理和带 UTF-8 BOM 的翻译文件读取。
-- 改善 Agent 辅助脚本的配置处理和启动检查，已准备好配音与画面的任务不再额外要求大模型服务。
+- Corregidos problemas de brillo de imágenes en escala de grises, fondo de imágenes transparentes, alineación de máscaras de zoom y color de fondo de subtítulos; mejoras en las transiciones de clips cortos, el fundido de la música de fondo y el tratamiento de caracteres especiales en las rutas de concatenación.
+- Aislamiento de los archivos intermedios de imagen entre tareas concurrentes, mejores identificadores de caché de imágenes y validación de la caché de descargas; si una generación por lotes falla parcialmente, se conservan los videos ya completados.
+- Corregido el tratamiento de velocidad, volumen y formato de audio en algunos servicios de voz, y mejorada la validación de audio remoto; se conservan los archivos existentes hasta que el audio de reemplazo esté listo.
+- Mejoras en el redondeo de marcas de tiempo de subtítulos, el salto de línea de palabras largas, los caracteres Unicode y el reconocimiento de etiquetas de pausa, evitando que líneas de solo símbolos y separadores alteren la estimación de la línea de tiempo de subtítulos.
+- Corregido que los títulos sociales de respaldo en chino y japonés usaran todo el guion; mejoras en la extracción de JSON, el filtrado de contenido de razonamiento, la limpieza de textos Markdown y la validación de términos de búsqueda de material.
+- Completados los formatos de subida local admitidos, incluidos los JPEG multi-imagen de cámara; mejoras en la revisión de videos históricos de la WebUI, el estado de borrado de tareas, la vista previa de subtítulos y los mensajes de error de conexión del modelo.
+- Soporte de peticiones HEAD para archivos generados, mejoras en la descarga por rangos, los mensajes de error de parámetros, y la actualización y protección de borrado del estado de tareas en Redis.
+- Menor riesgo de reenvío duplicado de peticiones de voz tras perder la respuesta o una redirección, conservación de la información de trazado de peticiones de Upload-Post y mejor detección de fallos de envío de WaveSpeed.
+- Actualizado Edge TTS, corrigiendo problemas 403 relacionados; limitada la versión de PyAV por compatibilidad con Whisper, y corregidas la limpieza de caché en Windows y la lectura de archivos de traducción con BOM UTF-8.
+- Mejoras en la gestión de configuración y las comprobaciones de arranque de los scripts auxiliares de Agent; las tareas que ya tienen voz e imagen preparadas ya no requieren además un servicio de modelo grande.
 
-## 使用与升级说明
+## Uso e instrucciones de actualización
 
-- 本项目维护的官方 PyPI 包名为 **`mpt`**，需要 **Python 3.11 或更高版本**。使用 `python -m pip install --upgrade mpt` 安装或升级，建议使用虚拟环境。PyPI 上另一个名为 `MoneyPrinterTurbo` 的包属于第三方发行版。
-- pip 安装版默认将配置和生成文件保存在用户目录，可通过 `MPT_HOME` 指定位置。源码版继续使用原有项目目录；切换安装方式时，请将配置和所需资源迁移到选定的运行目录。
-- 图片动态效果默认仍为**缓慢放大**，兼容已有使用方式。希望画面保持静止时，请同时选择**静止**和**无转场**；WebUI、CLI 和 API 均支持该设置。
-- Kimi Code 需要浏览器登录，并使用对应订阅额度；其他新增大模型服务需要配置各自的 API 凭据和服务参数。
-- 本地 SDXL 服务需要单独安装依赖、下载模型并启动 GPU 服务，不会随主程序自动运行。默认配置会在生图前卸载 Ollama 模型，请避免在同一 GPU 上同时运行大模型和生图任务。部署方法见[本地生图服务文档](https://github.com/harry0703/MoneyPrinterTurbo/blob/v1.3.9/docs/local-image-server/README.md)。
-- API 请求追踪**默认关闭**。开启后，提示词和业务参数可能出现在日志中；排查结束后请关闭，分享日志前检查私人内容。详见[诊断日志文档](https://github.com/harry0703/MoneyPrinterTurbo/blob/v1.3.9/docs/diagnostic-logging.md)。
+- El paquete oficial de PyPI que mantiene este proyecto se llama **`mpt`** y requiere **Python 3.11 o superior**. Usa `python -m pip install --upgrade mpt` para instalar o actualizar; se recomienda un entorno virtual. Otro paquete en PyPI llamado `MoneyPrinterTurbo` es una distribución de terceros.
+- pip La versión instalada guarda por defecto la configuración y los archivos generados en el directorio del usuario, y se puede indicar la ubicación con `MPT_HOME`. La versión de código fuente sigue usando el directorio del proyecto original; al cambiar de forma de instalación, migra la configuración y los recursos necesarios al directorio de ejecución elegido.
+- El efecto dinámico de imagen sigue siendo **zoom lento** por defecto, compatible con el uso existente. Si quieres que la imagen quede estática, elige a la vez **estática** y **sin transición**; la WebUI, el CLI y la API admiten este ajuste.
+- Kimi Code requiere iniciar sesión en el navegador y usa la cuota de la suscripción correspondiente; los demás servicios de modelos grandes nuevos requieren configurar sus propias credenciales de API y parámetros de servicio.
+- El servicio local SDXL requiere instalar dependencias por separado, descargar el modelo y arrancar el servicio de GPU; no se ejecuta automáticamente con el programa principal. La configuración por defecto descarga los modelos de Ollama antes de generar imágenes; evita ejecutar a la vez modelos grandes y tareas de generación de imágenes en la misma GPU. El método de despliegue está en la [documentación del servicio local de generación de imágenes](https://github.com/harry0703/MoneyPrinterTurbo/blob/v1.3.9/docs/local-image-server/README.md).
+- API El trazado de peticiones está **desactivado por defecto**. Al activarlo, los prompts y parámetros de negocio pueden aparecer en los logs; desactívalo al terminar de investigar y revisa el contenido privado antes de compartir logs. Más detalles en la [documentación de logs de diagnóstico](https://github.com/harry0703/MoneyPrinterTurbo/blob/v1.3.9/docs/diagnostic-logging.md).
 
-## 主要变更
+## Cambios principales
 
-- [c3634de](https://github.com/harry0703/MoneyPrinterTurbo/commit/c3634de097ea4951935d22e94580ff0ad2665503)：官方 pip 安装包与 WebUI、CLI 启动命令。
-- [90f7701](https://github.com/harry0703/MoneyPrinterTurbo/commit/90f77011d7e3b46d382e6d0180dabfb6725ffee4)：图片静止与缓慢放大选项。
-- [#1599](https://github.com/harry0703/MoneyPrinterTurbo/pull/1599)：Kimi Code 订阅接入，感谢 @ysntony；后续补充了[登录流程优化](https://github.com/harry0703/MoneyPrinterTurbo/commit/4204d0f)。
-- [#1668](https://github.com/harry0703/MoneyPrinterTurbo/pull/1668)：本地 SDXL 生图服务，感谢 @imkashif。
-- [#1589](https://github.com/harry0703/MoneyPrinterTurbo/pull/1589)：Opper 大模型服务，感谢 @Felixkw12。
-- [#1600](https://github.com/harry0703/MoneyPrinterTurbo/pull/1600)：onomeo 大模型服务，感谢 @Owaid0723666。
-- [#1657](https://github.com/harry0703/MoneyPrinterTurbo/pull/1657)：Muse Spark 大模型服务与巴西葡萄牙语翻译，感谢 @humbertocortezia。
-- [#1694](https://github.com/harry0703/MoneyPrinterTurbo/pull/1694)：EmpirioLabs AI 大模型服务，感谢 @Adam-Dalloul。
-- [6940611](https://github.com/harry0703/MoneyPrinterTurbo/commit/6940611cc2791d1ca13b3af7ee893ccd9544b874)：运行时诊断日志设置与请求追踪。
-- [e25326e](https://github.com/harry0703/MoneyPrinterTurbo/commit/e25326e)：中文、日文备用社交标题修复。
-- [#1597](https://github.com/harry0703/MoneyPrinterTurbo/pull/1597)：批量生成失败后保留已完成的视频，感谢 @hdu-r3drum。
-- [#1652](https://github.com/harry0703/MoneyPrinterTurbo/pull/1652)：Edge TTS 403 修复，感谢 @HEOJUNFO。
-- [#1582](https://github.com/harry0703/MoneyPrinterTurbo/pull/1582)：Whisper 与 PyAV 兼容性修复，感谢 @cristianchiriac。
-- [#1654](https://github.com/harry0703/MoneyPrinterTurbo/pull/1654)：Windows 缓存清理修复，感谢 @shan3520。
-- [#1658](https://github.com/harry0703/MoneyPrinterTurbo/pull/1658)：带 UTF-8 BOM 的翻译文件支持，感谢 @ketpatil77。
-- [#1663](https://github.com/harry0703/MoneyPrinterTurbo/pull/1663)：状态无法解析时的任务保护，感谢 @RerankerGuo。
-- [#1645](https://github.com/harry0703/MoneyPrinterTurbo/pull/1645)：更清晰的模型连接错误提示，感谢 @fengqiaoqu。
-- [#1585](https://github.com/harry0703/MoneyPrinterTurbo/pull/1585)：本地素材启动检查，感谢 @drakeo338；[#1588](https://github.com/harry0703/MoneyPrinterTurbo/pull/1588)：保留 Redis 任务 ID 原始字符串，感谢 @ac1982。
-- [#1620](https://github.com/harry0703/MoneyPrinterTurbo/pull/1620)、[#1636](https://github.com/harry0703/MoneyPrinterTurbo/pull/1636)、[#1608](https://github.com/harry0703/MoneyPrinterTurbo/pull/1608)：灰度图片渲染、生成文件 HEAD 请求和已备素材的 Agent 工作流，以及多项字幕、配音、素材、API 与任务稳定性修复，感谢 @rudycelekli。
+- [c3634de](https://github.com/harry0703/MoneyPrinterTurbo/commit/c3634de097ea4951935d22e94580ff0ad2665503): paquete de instalación oficial de pip y comandos de arranque de WebUI y CLI.
+- [90f7701](https://github.com/harry0703/MoneyPrinterTurbo/commit/90f77011d7e3b46d382e6d0180dabfb6725ffee4): opciones de imagen estática y zoom lento.
+- [#1599](https://github.com/harry0703/MoneyPrinterTurbo/pull/1599): integración de la suscripción Kimi Code, gracias a @ysntony; después se añadieron [mejoras del flujo de inicio de sesión](https://github.com/harry0703/MoneyPrinterTurbo/commit/4204d0f).
+- [#1668](https://github.com/harry0703/MoneyPrinterTurbo/pull/1668): servicio local de generación de imágenes SDXL, gracias a @imkashif.
+- [#1589](https://github.com/harry0703/MoneyPrinterTurbo/pull/1589): servicio de modelo grande Opper, gracias a @Felixkw12.
+- [#1600](https://github.com/harry0703/MoneyPrinterTurbo/pull/1600): servicio de modelo grande onomeo, gracias a @Owaid0723666.
+- [#1657](https://github.com/harry0703/MoneyPrinterTurbo/pull/1657): servicio de modelo grande Muse Spark y traducción al portugués de Brasil, gracias a @humbertocortezia.
+- [#1694](https://github.com/harry0703/MoneyPrinterTurbo/pull/1694): servicio de modelo grande EmpirioLabs AI, gracias a @Adam-Dalloul.
+- [6940611](https://github.com/harry0703/MoneyPrinterTurbo/commit/6940611cc2791d1ca13b3af7ee893ccd9544b874): ajustes de logs de diagnóstico en tiempo de ejecución y trazado de peticiones.
+- [e25326e](https://github.com/harry0703/MoneyPrinterTurbo/commit/e25326e): corrección de los títulos sociales de respaldo en chino y japonés.
+- [#1597](https://github.com/harry0703/MoneyPrinterTurbo/pull/1597): conservar los videos completados tras un fallo en la generación por lotes, gracias a @hdu-r3drum.
+- [#1652](https://github.com/harry0703/MoneyPrinterTurbo/pull/1652): corrección del 403 de Edge TTS, gracias a @HEOJUNFO.
+- [#1582](https://github.com/harry0703/MoneyPrinterTurbo/pull/1582): corrección de compatibilidad entre Whisper y PyAV, gracias a @cristianchiriac.
+- [#1654](https://github.com/harry0703/MoneyPrinterTurbo/pull/1654): corrección de la limpieza de caché en Windows, gracias a @shan3520.
+- [#1658](https://github.com/harry0703/MoneyPrinterTurbo/pull/1658): soporte de archivos de traducción con BOM UTF-8, gracias a @ketpatil77.
+- [#1663](https://github.com/harry0703/MoneyPrinterTurbo/pull/1663): protección de tareas cuando el estado no se puede analizar, gracias a @RerankerGuo.
+- [#1645](https://github.com/harry0703/MoneyPrinterTurbo/pull/1645): mensajes de error de conexión del modelo más claros, gracias a @fengqiaoqu.
+- [#1585](https://github.com/harry0703/MoneyPrinterTurbo/pull/1585): comprobación de material local al arrancar, gracias a @drakeo338; [#1588](https://github.com/harry0703/MoneyPrinterTurbo/pull/1588): conservar la cadena original del ID de tarea de Redis, gracias a @ac1982.
+- [#1620](https://github.com/harry0703/MoneyPrinterTurbo/pull/1620), [#1636](https://github.com/harry0703/MoneyPrinterTurbo/pull/1636), [#1608](https://github.com/harry0703/MoneyPrinterTurbo/pull/1608): renderizado de imágenes en escala de grises, peticiones HEAD de archivos generados y flujo de trabajo de Agent con material preparado, además de varias correcciones de estabilidad de subtítulos, voz, material, API y tareas, gracias a @rudycelekli.
 
-感谢所有贡献代码、反馈问题和参与测试的朋友！
+¡Gracias a todos los que contribuyeron código, informaron de problemas y participaron en las pruebas!
 
-**完整变更记录**：[v1.3.8...v1.3.9](https://github.com/harry0703/MoneyPrinterTurbo/compare/v1.3.8...v1.3.9)
+**Registro completo de cambios**:[v1.3.8...v1.3.9](https://github.com/harry0703/MoneyPrinterTurbo/compare/v1.3.8...v1.3.9)

@@ -33,7 +33,7 @@ class TestVideoTermItems(unittest.TestCase):
                     self.assertEqual(state.list_task_ids(), [])
 
     def test_string_and_string_array_keywords_preserve_supported_inputs(self):
-        for terms in ("coffee, morning", ["coffee", "早晨"], [], None):
+        for terms in ("coffee, morning", ["coffee", "mañana"], [], None):
             with self.subTest(terms=terms):
                 manager = InMemoryTaskManager(0)
                 with (

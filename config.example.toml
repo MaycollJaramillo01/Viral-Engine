@@ -3,7 +3,7 @@
 # credentials in config.toml; do not commit your local config.toml.
 
 # =============================================================================
-# API Service / API 服务
+# API Service / API Servicio
 # =============================================================================
 # Log level: DEBUG, INFO, WARNING, or ERROR.
 log_level = "DEBUG"
@@ -19,8 +19,8 @@ listen_port = 8080
 # bodies. Prompts may be visible; only enable while troubleshooting.
 # WebUI: Settings > Interface > Diagnostic logging; Apply takes effect immediately
 # in that process. Other processes / manual file edits require a restart.
-# 请求追踪独立于日志等级，默认关闭；提示词可能出现在日志中。
-# WebUI 设置中的诊断日志可立即生效；其它进程及手工修改配置后需要重启。
+# El trazado de peticiones es independiente del nivel de log y está desactivado por defecto; los prompts pueden aparecer en los logs.
+# WebUI Los logs de diagnóstico de los ajustes se aplican de inmediato; otros procesos y las modificaciones manuales de la configuración requieren reiniciar.
 log_requests = false
 
 [app]
@@ -43,20 +43,20 @@ openai_chatgpt_timeout = ""
 # Leave empty for local backward-compatible access. When configured, clients
 # must send the same value in the x-api-key request header. Keep real keys only
 # in config.toml and never commit them.
-# API 路由和 /tasks 生成文件的可选保护。留空时保持本地免认证行为；
-# 配置后客户端必须通过 x-api-key 请求头传入同一个值。
+# API Protección opcional de las rutas y de los archivos generados en /tasks. Si se deja vacío se mantiene el comportamiento local sin autenticación;
+# una vez configurado, el cliente debe enviar ese mismo valor en la cabecera x-api-key.
 # Task artifact requests also require this header; a browser address bar cannot
 # attach custom headers, so authenticated clients should download them via HTTP.
-# 任务产物下载同样需要该请求头；浏览器地址栏无法附加自定义请求头，启用鉴权后
-# 应由 API 客户端携带请求头下载。
+# La descarga de artefactos de tareas también requiere esa cabecera; la barra de direcciones del navegador no puede añadir cabeceras personalizadas, así que con la autenticación activada
+# la descarga debe hacerla un cliente de API que envíe la cabecera.
 api_key = ""
 
 # -----------------------------------------------------------------------------
-# General / 通用设置
+# General / Ajustes generales
 # -----------------------------------------------------------------------------
 
 # Hide the basic configuration panel in the WebUI.
-# 是否隐藏 WebUI 基础配置面板。
+# Si se oculta el panel de configuración básica de la WebUI.
 hide_config = false
 
 # Script generation backend. "local" keeps the existing LLM workflow.
@@ -77,15 +77,15 @@ loomloom_run_timeout_seconds = 600
 loomloom_video_run_timeout_seconds = 1800
 
 # Timeout in seconds for a single Edge TTS streaming request.
-# 单次 Edge TTS 流式请求超时时间。慢网络可适当调大，设置为 0 表示禁用超时。
+# Tiempo de espera de una petición de streaming de Edge TTS. En redes lentas se puede aumentar; 0 desactiva el tiempo de espera.
 edge_tts_timeout = 30
 
 # Verify TLS certificates for external APIs and material downloads.
-# 默认应保持开启；仅在可信代理或自签名证书环境中临时关闭。
+# Debe mantenerse activado por defecto; solo se desactiva temporalmente en entornos con proxy de confianza o certificados autofirmados.
 tls_verify = true
 
 # -----------------------------------------------------------------------------
-# Video Materials / 视频素材
+# Video Materials / Material de video
 # -----------------------------------------------------------------------------
 
 # Available values: "pexels", "pixabay", "coverr", "wavespeed",
@@ -105,7 +105,7 @@ video_source = "pexels"
 
 # API key lists support key rotation. Use straight ASCII double quotes and
 # separate multiple keys with commas, for example: ["key-1", "key-2"].
-# Key 必须使用英文半角双引号，多个 Key 使用英文逗号分隔。
+# Key Hay que usar comillas dobles ASCII; varias Keys se separan con comas ASCII.
 
 # Register at https://www.pexels.com/api/
 pexels_api_keys = []
@@ -246,7 +246,7 @@ twelvelabs_rerank_terms = false
 # twelvelabs_pegasus_model = "pegasus1.5"
 
 # Match search terms and downloaded materials to the script narrative order.
-# 默认关闭，开启后会减少随机性，使素材顺序更贴近文案结构。
+# Desactivado por defecto; al activarlo se reduce la aleatoriedad y el orden del material se ajusta más a la estructura del texto.
 match_materials_to_script = false
 
 # Optional Sonilo video-matched original background music.
@@ -254,11 +254,11 @@ match_materials_to_script = false
 # this value, or you can set the SONILO_API_KEY environment variable instead.
 sonilo_api_key = ""
 sonilo_base_url = "https://api.sonilo.com"
-# 单次生成流连续无数据时的最长等待秒数；它不是整个请求的总耗时上限。
+# Tiempo máximo en segundos sin datos continuos en un flujo de generación; no es el límite de duración total de la petición.
 sonilo_timeout = 600
 
 # -----------------------------------------------------------------------------
-# LLM Providers / 大模型提供商
+# LLM Providers / Proveedores de modelos grandes
 # -----------------------------------------------------------------------------
 
 # Provider definitions, default models, and default Base URLs are maintained in
@@ -272,32 +272,32 @@ moonshot_api_key = ""
 moonshot_base_url = ""
 moonshot_model_name = ""
 
-# 无限星河 AI（Infistar），项目赞助商，提供 OpenAI 兼容接口。
-# 密钥：https://infistar.cc/keys；模型列表：https://infistar.cc/pricing
-# 地址和模型留空时使用 https://infistar.cc/v1 和 gpt-6-luna。
+# Infistar AI, patrocinador del proyecto, ofrece una interfaz compatible con OpenAI.
+# Claves: https://infistar.cc/keys; lista de modelos:https://infistar.cc/pricing
+# Si la dirección y el modelo se dejan vacíos se usan https://infistar.cc/v1 y gpt-6-luna.
 infistar_api_key = ""
 infistar_base_url = ""
 infistar_model_name = ""
 
-# 视频素材源 infistar 独立配置，不要求使用 Infistar LLM。
-# Base URL 留空使用 https://infistar.cc/v1；也可通过 INFISTAR_VIDEO_API_KEY 设置密钥。
-# 可选模型：doubao-seedance-2-0-fast-260128（5 秒）、MiniMax-H3（6 秒）、
-# kling-v2-6（5 秒，取决于账号线路可用性）。视频按付费任务计费。
-# MiniMax 当前线路返回横屏素材；竖屏成片沿用画面适配设置裁剪或留边。
+# La fuente de material de video infistar se configura por separado y no requiere usar el LLM de Infistar.
+# Base URL Vacío usa https://infistar.cc/v1; la clave también se puede definir con INFISTAR_VIDEO_API_KEY.
+# Modelos disponibles: doubao-seedance-2-0-fast-260128 (5 segundos), MiniMax-H3 (6 segundos),
+# kling-v2-6(5 segundos, según la disponibilidad de la línea de la cuenta). El video se cobra como tarea de pago.
+# MiniMax La línea actual devuelve material horizontal; el video final vertical se recorta o rellena según los ajustes de adaptación de imagen.
 infistar_video_api_key = ""
 infistar_video_base_url = ""
 infistar_video_model = "doubao-seedance-2-0-fast-260128"
 infistar_video_poll_interval = 5
 infistar_video_run_timeout = 1800
 
-# Jalapeno Cloud：活动页 https://www.jalapeno-cloud.ai/MoneyPrinterTurbo
-# 模型广场 https://www.jalapeno-cloud.ai/models
+# Jalapeno Cloud: página de la campaña https://www.jalapeno-cloud.ai/MoneyPrinterTurbo
+# Plaza de modelos https://www.jalapeno-cloud.ai/models
 jalapeno_api_key = ""
 jalapeno_base_url = ""
 jalapeno_model_name = ""
-# 视频 Key 留空复用 jalapeno_api_key；独立视频 Key 或环境变量
-# JALAPENO_VIDEO_API_KEY 优先。视频地址不复用 LLM 的 /v1 地址。
-# 地址支持 https://api.jalapeno-cloud.ai/api/v3 或完整 /contents/generations/tasks。
+# Si la Key de video se deja vacía se reutiliza jalapeno_api_key; una Key de video independiente o la variable de entorno
+# JALAPENO_VIDEO_API_KEY tienen prioridad. La dirección de video no reutiliza la dirección /v1 del LLM.
+# La dirección admite https://api.jalapeno-cloud.ai/api/v3 o la completa /contents/generations/tasks.
 jalapeno_video_api_key = ""
 jalapeno_video_base_url = ""
 jalapeno_video_model = "Doubao-Seedance-2-5-260628"
@@ -318,9 +318,9 @@ apimart_api_key = ""
 apimart_base_url = ""
 apimart_model_name = ""
 
-# Fluxion AI：使用 OpenAI 接口分组的 API Key，地址和模型可按分组覆盖。
-# 留空时默认使用 https://fluxionai.space/v1 和 gpt-5.5。
-# 模型广场：https://fluxionai.space/model-plaza
+# Fluxion AI: usa la API Key del grupo de interfaz OpenAI; la dirección y el modelo se pueden sobrescribir por grupo.
+# Si se deja vacío se usan por defecto https://fluxionai.space/v1 y gpt-5.5.
+# Plaza de modelos:https://fluxionai.space/model-plaza
 fluxionai_api_key = ""
 fluxionai_base_url = ""
 fluxionai_model_name = ""
@@ -565,12 +565,12 @@ pollinations_base_url = ""
 pollinations_model_name = ""
 
 # -----------------------------------------------------------------------------
-# Speech, Subtitles, and Video / 语音、字幕与视频
+# Speech, Subtitles, and Video / Voz, subtítulos y video
 # -----------------------------------------------------------------------------
 
 # Xiaomi MiMo TTS shares mimo_api_key and mimo_base_url with the MiMo LLM.
 mimo_tts_model_name = "mimo-v2.5-tts"
-mimo_tts_style_prompt = "请用自然、清晰、适合短视频旁白的语气朗读。"
+mimo_tts_style_prompt = "Lee con un tono natural y claro, adecuado para la narración de videos cortos."
 
 # Subtitle provider: "edge" or "whisper". Whisper is loaded only when selected
 # explicitly; Edge failures do not trigger an automatic Whisper model download.
@@ -611,7 +611,7 @@ subtitle_provider = "edge"
 # video_codec = "libx264"
 
 # -----------------------------------------------------------------------------
-# Storage and Task Runtime / 存储与任务运行
+# Storage and Task Runtime / Almacenamiento y ejecución de tareas
 # -----------------------------------------------------------------------------
 
 # Public base URL used to build generated video download links. Leave empty to
@@ -636,7 +636,7 @@ max_concurrent_tasks = 5
 max_queued_tasks = 100
 
 # -----------------------------------------------------------------------------
-# Cross-platform Publishing / 跨平台发布
+# Cross-platform Publishing / Publicación multiplataforma
 # -----------------------------------------------------------------------------
 
 # Upload-Post can publish generated videos to TikTok, Instagram, and YouTube.
@@ -654,9 +654,9 @@ upload_post_youtube_privacy_status = "public"
 # Declare whether the video is made for children. Choose based on its audience.
 # If unset, future YouTube uploads explicitly declare "not made for kids".
 # Set true for children's content. Previously uploaded videos are not changed.
-# 是否面向儿童：请根据视频实际受众设置，必须使用 TOML 布尔值 true / false。
-# 未配置时，后续 YouTube 上传默认声明为非面向儿童；儿童内容请显式设置为 true。
-# 与旧版省略声明字段不同，此设置不会修改已上传的视频。
+# Si está dirigido a niños: configúralo según la audiencia real del video; debe usar los booleanos TOML true / false.
+# Si no está configurado, las siguientes subidas a YouTube se declaran por defecto como no dirigidas a niños; para contenido infantil establécelo explícitamente en true.
+# A diferencia de la versión anterior, que omitía el campo de declaración, este ajuste no modifica los videos ya subidos.
 upload_post_youtube_made_for_kids = false
 # Maximum number of running and queued cross-post jobs per process. When the
 # limit is reached, video generation still succeeds and only cross-posting is
@@ -665,7 +665,7 @@ upload_post_youtube_made_for_kids = false
 upload_post_max_pending_tasks = 10
 
 # =============================================================================
-# Whisper Subtitles / Whisper 字幕
+# Whisper Subtitles / Whisper Subtítulos
 # =============================================================================
 
 [whisper]
@@ -682,7 +682,7 @@ compute_type = "int8"
 # initial_prompt = ""
 
 # =============================================================================
-# Material Request Proxy / 素材请求代理
+# Material Request Proxy / Proxy para las peticiones de material
 # =============================================================================
 
 [proxy]
@@ -693,7 +693,7 @@ compute_type = "int8"
 # https = "http://127.0.0.1:1080"
 
 # =============================================================================
-# TTS Providers / 语音合成服务
+# TTS Providers / Servicio de síntesis de voz
 # =============================================================================
 
 [azure]
@@ -792,7 +792,7 @@ model_id = ""
 voice_id = "default"
 
 # =============================================================================
-# WebUI Preferences / WebUI 偏好
+# WebUI Preferences / WebUI Preferencias
 # =============================================================================
 
 [ui]
@@ -800,12 +800,12 @@ voice_id = "default"
 hide_log = false
 
 # Open the task folder automatically after video generation completes.
-# 视频生成完成后是否自动打开任务目录；关闭后仍可在任务管理中手动打开。
+# Si se abre automáticamente el directorio de la tarea al terminar de generar el video; si se desactiva, se puede abrir manualmente desde la gestión de tareas.
 open_task_folder_on_completion = true
 
 # The WebUI writes the remaining preferences automatically. Uncomment values
 # below only when you want to define initial defaults manually.
-# language = "zh"
+# language = "es"
 # video_language = ""
 # paragraph_number = 1
 # video_script_prompt = ""

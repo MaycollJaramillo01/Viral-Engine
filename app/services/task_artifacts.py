@@ -1,4 +1,4 @@
-"""任务目录中持久化文件的安全读写。"""
+"""Lectura y escritura seguras de archivos persistidos en el directorio de la tarea."""
 
 from __future__ import annotations
 
@@ -22,18 +22,18 @@ def _script_lock(task_id: str):
 
 
 def _script_file(task_id: str) -> Path:
-    """返回任务脚本清单路径，并复用统一的任务目录创建逻辑。"""
+    """Devuelve la ruta del listado del guion de la tarea, reutilizando la lógica unificada de creación del directorio de la tarea."""
     return Path(utils.task_dir(task_id)) / "script.json"
 
 
 def _write_json_atomic(target: Path, payload: Mapping[str, Any]) -> None:
     """
-    在目标目录内原子写入 JSON，避免进程中断留下半个文件。
+    Escribe JSON de forma atómica dentro del directorio de destino, para que una interrupción del proceso no deje medio archivo.
 
-    临时文件和目标文件必须位于同一目录，才能保证 ``os.replace`` 在常见
-    本地文件系统和 Docker 挂载目录中保持原子替换语义。写入成功前不会修改
-    现有文件；异常时只清理本次创建的临时文件，并把错误交给调用方决定是否
-    影响主流程。
+    El archivo temporal y el de destino deben estar en el mismo directorio para que ``os.replace`` mantenga la semántica de sustitución atómica en los
+    sistemas de archivos locales habituales y en directorios montados por Docker. Hasta que la escritura tiene éxito no se modifica
+    el archivo existente; ante una excepción solo se limpia el archivo temporal creado esta vez, y el error se pasa al llamador para que decida si
+    afecta al flujo principal.
     """
     temp_path: Path | None = None
     try:
@@ -65,18 +65,18 @@ def _write_json_atomic(target: Path, payload: Mapping[str, Any]) -> None:
 
 
 def write_script_data(task_id: str, payload: Mapping[str, Any]) -> None:
-    """创建或完整替换任务的 ``script.json`` 清单。"""
+    """Crea o sustituye por completo el listado ``script.json`` de la tarea."""
     with _script_lock(task_id):
         _write_json_atomic(_script_file(task_id), payload)
 
 
 def patch_script_data(task_id: str, **updates: Any) -> bool:
     """
-    在保留原有字段的前提下补充任务清单，失败时返回 ``False``。
+    Completa el listado de la tarea conservando los campos existentes; si falla devuelve ``False``.
 
-    素材来源属于辅助诊断信息，不能因为文件权限、磁盘瞬时异常或历史文件损坏
-    阻断视频生成。因此该入口会记录完整异常并降级；首次创建任务清单仍使用
-    ``write_script_data``，由主流程决定基础任务数据写入失败时如何处理。
+    El origen del material es información de diagnóstico auxiliar y no puede bloquear la generación del video por permisos de archivo, anomalías momentáneas del disco o archivos históricos dañados
+    . Por eso esta entrada registra la excepción completa y se degrada; la primera creación del listado de la tarea sigue usando
+    ``write_script_data``, y el flujo principal decide qué hacer si falla la escritura de los datos básicos de la tarea.
     """
     try:
         with _script_lock(task_id):
@@ -90,8 +90,8 @@ def patch_script_data(task_id: str, **updates: Any) -> bool:
             _write_json_atomic(target, payload)
             return True
     except FileNotFoundError:
-        # ``download_videos`` 也可能被测试、脚本或第三方代码独立调用，此时没有
-        # 任务清单属于正常场景，不应制造警告或为了辅助记录创建残缺文件。
+        # ``download_videos`` también puede llamarse de forma independiente desde pruebas, scripts o código de terceros, y en ese caso no tener
+        # listado de tarea es un escenario normal, que no debe generar advertencias ni crear archivos incompletos solo para el registro auxiliar.
         logger.debug(
             f"skip task script update because script.json does not exist: "
             f"task_id={task_id}"

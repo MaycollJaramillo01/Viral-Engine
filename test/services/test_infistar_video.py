@@ -1,4 +1,4 @@
-"""覆盖付费提交幂等边界、模型参数、下载凭据隔离及素材按需生成。"""
+"""Cubre los límites de idempotencia del envío de pago, los parámetros del modelo, el aislamiento de credenciales de descarga y la generación de material bajo demanda."""
 
 import subprocess
 import imageio_ffmpeg

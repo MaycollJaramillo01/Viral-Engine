@@ -29,13 +29,13 @@ _UTF8_BOM = "\ufeff"
 
 
 class _SynchronizedConfig(dict):
-    """保持 dict 使用方式不变，同时让运行期配置写操作服从同一把锁。"""
+    """Mantiene el uso como dict sin cambios, pero hace que las escrituras de configuración en tiempo de ejecución respeten el mismo lock."""
 
     def __setitem__(self, key, value):
-        # Streamlit 每次整页 rerun 都会把当前控件值重新写回配置。视频任务持有
-        # runtime_config_lock 时，如果值没有变化，这次写入没有任何副作用，也
-        # 不应让刷新后的页面卡在表单中途。真正改变配置的写入仍进入下方锁，
-        # 因而不能在正在生成的视频中途切换 Provider、密钥或其它全局设置。
+        # Streamlit Cada rerun completo de la página vuelve a escribir los valores actuales de los controles en la configuración. Mientras la tarea de video tiene
+        # runtime_config_lock , si el valor no ha cambiado esta escritura no tiene ningún efecto secundario, y
+        # no debe dejar la página refrescada atascada a mitad del formulario. Las escrituras que realmente cambian la configuración siguen entrando en el lock de abajo,
+        # así que no se puede cambiar de Provider, clave u otros ajustes globales a mitad de la generación de un video.
         current = super().get(key, _MISSING)
         if current is not _MISSING and current == value:
             return
@@ -53,8 +53,8 @@ class _SynchronizedConfig(dict):
             super().clear()
 
     def pop(self, key, default=_MISSING):
-        # ``pop(key, default)`` 在 key 不存在时同样不会改变配置。WebUI 使用
-        # 这种写法表达“采用默认策略”，刷新时必须允许它直接完成。
+        # ``pop(key, default)`` tampoco cambia la configuración cuando la key no existe. La WebUI usa
+        # esta forma para expresar «usar la estrategia por defecto», y al refrescar debe poder completarse directamente.
         if key not in self:
             if default is _MISSING:
                 raise KeyError(key)
@@ -65,8 +65,8 @@ class _SynchronizedConfig(dict):
             return super().pop(key, default)
 
     def setdefault(self, key, default=None):
-        # 与 __setitem__ 相同，已存在 key 的 setdefault 是只读操作。提前返回
-        # 可以让只读取默认配置的页面刷新不受长任务配置锁影响。
+        # Igual que __setitem__, setdefault sobre una key existente es una operación de solo lectura. Devolver antes
+        # permite que el refresco de páginas que solo leen la configuración por defecto no se vea afectado por el lock de tareas largas.
         current = super().get(key, _MISSING)
         if current is not _MISSING:
             return current
@@ -86,29 +86,29 @@ class _SynchronizedConfig(dict):
 
 
 def _pending_update_key(config_section, key):
-    """为进程内固定配置分区生成待更新键。"""
+    """Genera la clave pendiente de actualización para una partición de configuración fija del proceso."""
     return id(config_section), key
 
 
 def update_config_nonblocking(config_section, key, value):
     """
-    非阻塞更新 WebUI 的运行期配置。
+    Actualiza sin bloquear la configuración en tiempo de ejecución de la WebUI.
 
-    视频生成会持有 ``runtime_config_lock``，确保同一任务不会在执行中途切换
-    Provider、密钥或语音配置。Streamlit 控件发生变化时不能等待这把长任务锁，
-    否则浏览器会表现为页面冻结。锁空闲时立即更新；锁繁忙时只保留每个配置项
-    的最新值，并在当前任务释放锁时统一应用。
+    La generación de video mantiene ``runtime_config_lock`` para asegurar que una misma tarea no cambie a mitad de ejecución
+    Provider, claves o configuración de voz. Cuando cambia un control de Streamlit no se puede esperar a este lock de tarea larga,
+    o el navegador parecerá congelado. Si el lock está libre se actualiza de inmediato; si está ocupado solo se guarda el último valor
+    de cada elemento de configuración y se aplica todo cuando la tarea actual libera el lock.
 
-    返回 True 表示值已经生效，False 表示已进入待更新队列。
+    Devolver True significa que el valor ya está en vigor; False significa que entró en la cola de actualizaciones pendientes.
     """
     return update_config_values_nonblocking(config_section, {key: value})
 
 
 def update_config_values_nonblocking(config_section, changes):
-    """将同一次操作的关联字段一起排队，避免并发应用时拆散配置。"""
-    # 所有更新都先进入同一队列，再尝试获取配置锁。这样多个页面同时修改同一
-    # 配置项时，写入队列的先后顺序就是最终顺序，不会出现较早线程在获取锁后
-    # 把较新线程已经排队的值误删掉。
+    """Encola juntos los campos relacionados de una misma operación, para no separarlos al aplicarse de forma concurrente."""
+    # Todas las actualizaciones entran primero en la misma cola y luego se intenta obtener el lock de configuración. Así, cuando varias páginas modifican a la vez el mismo
+    # elemento, el orden de escritura en la cola es el orden final, y no puede ocurrir que un hilo anterior, tras obtener el lock,
+    # borre por error un valor más reciente que otro hilo ya había encolado.
     with _pending_config_lock:
         for key, value in changes.items():
             _pending_config_updates[_pending_update_key(config_section, key)] = (
@@ -119,9 +119,9 @@ def update_config_values_nonblocking(config_section, changes):
 
     acquired = _config_save_lock.acquire(blocking=False)
     if not acquired:
-        # 调用方通常会在本次 Streamlit rerun 末尾请求保存，但不能依赖这一步
-        # 一定执行。例如页面中途异常或更新恰好发生在任务退出保存阶段时，仍需
-        # 有后台刷新线程保证排队值最终生效。
+        # El llamador normalmente pide guardar al final de este rerun de Streamlit, pero no se puede depender de que este paso
+        # se ejecute siempre. Por ejemplo, si la página falla a mitad o la actualización ocurre justo en la fase de guardado al salir de la tarea, sigue siendo necesario
+        # que un hilo de refresco en segundo plano garantice que los valores encolados acaben aplicándose.
         _schedule_deferred_config_flush()
         return False
 
@@ -136,7 +136,7 @@ def update_config_values_nonblocking(config_section, changes):
 
 
 def update_logging_options(level, log_requests):
-    """串行发布运行期快照与持久化意图，不等待生成任务的长配置锁。"""
+    """Publica en serie la instantánea de ejecución y la intención de persistencia, sin esperar al lock largo de configuración de la tarea de generación."""
     from app.utils.logging_utils import get_logging_options, set_logging_options
 
     with _diagnostics_update_lock:
@@ -149,10 +149,10 @@ def update_logging_options(level, log_requests):
 
 def delete_config_nonblocking(config_section, key):
     """
-    非阻塞删除 WebUI 配置项。
+    Elimina sin bloquear un elemento de configuración de la WebUI.
 
-    “使用默认值”需要真正移除配置项，而不是写入空字符串。视频任务占用配置
-    锁时，删除意图会覆盖同一配置项之前排队的更新，并在任务结束后执行。
+    «Usar el valor por defecto» requiere eliminar realmente el elemento, no escribir una cadena vacía. Cuando la tarea de video ocupa el lock
+    de configuración, la intención de borrado sobrescribe las actualizaciones encoladas antes para ese elemento y se ejecuta al terminar la tarea.
     """
     with _pending_config_lock:
         _pending_config_updates[_pending_update_key(config_section, key)] = (
@@ -174,12 +174,12 @@ def delete_config_nonblocking(config_section, key):
 
 
 def _apply_pending_config_updates_locked():
-    """在持有配置写锁时应用 WebUI 暂存的最新配置值。"""
+    """Aplica los últimos valores de configuración pendientes de la WebUI mientras se mantiene el lock de escritura de configuración."""
     with _pending_config_lock:
         updates = list(_pending_config_updates.values())
         _pending_config_updates.clear()
-        # 应用配置时继续持有待更新锁。读取“当前值 + 待更新值”快照的线程由此
-        # 只能看到应用前或应用后的完整状态，不会读到只更新了一半的配置集合。
+        # Mientras se aplica la configuración se sigue manteniendo el lock de pendientes. Así, los hilos que leen la instantánea «valor actual + valor pendiente»
+        # solo pueden ver el estado completo de antes o después de aplicar, nunca un conjunto de configuración actualizado a medias.
         for config_section, key, value in updates:
             if value is _DELETE:
                 config_section.pop(key, None)
@@ -190,11 +190,11 @@ def _apply_pending_config_updates_locked():
 
 def snapshot_config_with_pending(config_section):
     """
-    返回配置分区的有效快照，并合并尚未应用的 WebUI 更新。
+    Devuelve la instantánea efectiva de una partición de configuración, combinando las actualizaciones de la WebUI aún no aplicadas.
 
-    视频任务持锁期间不能改写全局配置，但用户仍可准备下一条内容。LLM 请求
-    使用这个快照后，界面中刚选择的 Provider、模型和密钥会参与新请求，同时
-    不会改变正在执行的视频任务。
+    Mientras la tarea de video mantiene el lock no se puede reescribir la configuración global, pero el usuario puede preparar el siguiente contenido. Las peticiones LLM
+    usan esta instantánea, así que el Provider, modelo y clave recién elegidos en la interfaz se usan en la nueva petición, sin
+    cambiar la tarea de video en curso.
     """
     with _pending_config_lock:
         snapshot = dict(config_section)
@@ -210,7 +210,7 @@ def snapshot_config_with_pending(config_section):
 
 
 def _flush_pending_config_locked(*, suppress_save_errors):
-    """在持有配置写锁时应用并保存当前所有待处理配置。"""
+    """Aplica y guarda todas las configuraciones pendientes mientras se mantiene el lock de escritura de configuración."""
     global _pending_config_save_requested
 
     updates_applied = _apply_pending_config_updates_locked()
@@ -225,8 +225,8 @@ def _flush_pending_config_locked(*, suppress_save_errors):
         save_config()
         return True
     except Exception as exc:
-        # 内存中的配置已经成功应用，保存失败时只保留待保存标记。视频任务不应
-        # 因配置文件暂时不可写而被改判失败；下一次页面交互会再次触发保存。
+        # La configuración en memoria ya se aplicó correctamente; si el guardado falla solo se conserva la marca de pendiente de guardar. La tarea de video no debe
+        # marcarse como fallida porque el archivo de configuración no sea escribible temporalmente; la siguiente interacción con la página volverá a guardar.
         with _pending_config_lock:
             _pending_config_save_requested = True
         if not suppress_save_errors:
@@ -236,7 +236,7 @@ def _flush_pending_config_locked(*, suppress_save_errors):
 
 
 def _run_deferred_config_flush():
-    """等待长任务释放配置锁，并可靠清空期间积累的配置更新。"""
+    """Espera a que la tarea larga libere el lock de configuración y vacía de forma fiable las actualizaciones acumuladas mientras tanto."""
     global _pending_config_flush_scheduled
 
     while True:
@@ -255,7 +255,7 @@ def _run_deferred_config_flush():
 
 
 def _schedule_deferred_config_flush():
-    """保证同一时间最多只有一个后台线程等待刷新配置。"""
+    """Garantiza que como máximo un hilo en segundo plano espere para refrescar la configuración a la vez."""
     global _pending_config_flush_scheduled
 
     with _pending_config_lock:
@@ -280,10 +280,10 @@ def _schedule_deferred_config_flush():
 
 def try_save_config():
     """
-    非阻塞保存 WebUI 配置，锁繁忙时交由当前长任务结束后保存。
+    Guarda sin bloquear la configuración de la WebUI; si el lock está ocupado, se guarda cuando termine la tarea larga actual.
 
-    普通 API、CLI 和维护脚本仍可调用 ``save_config`` 获得原来的阻塞写入语义；
-    只有 Streamlit rerun 使用本函数，避免页面为等待视频任务而长时间无响应。
+    La API normal, el CLI y los scripts de mantenimiento pueden seguir llamando a ``save_config`` con la semántica de escritura bloqueante original;
+    solo el rerun de Streamlit usa esta función, para evitar que la página deje de responder mucho tiempo esperando la tarea de video.
     """
     global _pending_config_save_requested
 
@@ -304,14 +304,14 @@ def try_save_config():
 @contextmanager
 def runtime_config_lock():
     """
-    在一次依赖全局配置的完整操作期间阻止其它 WebUI 会话改写配置。
+    Impide que otras sesiones de la WebUI reescriban la configuración durante una operación completa que depende de la configuración global.
 
-    当前项目默认绑定本地回环地址，配置仍然是单用户全局配置。这个轻量锁主要
-    保护生成、试听等长操作，避免另一个标签页在操作中途切换 Provider 或密钥。
+    El proyecto se enlaza por defecto a la dirección de loopback local y la configuración sigue siendo global de un solo usuario. Este lock ligero sirve principalmente para
+    proteger operaciones largas como generar o previsualizar, evitando que otra pestaña cambie de Provider o clave a mitad de la operación.
     """
     with _config_save_lock:
-        # 如果上一个短操作释放锁时后台刷新线程尚未获得调度，新任务必须在读取
-        # Provider、密钥等全局配置前先应用队列，不能继续使用旧配置执行整条流水线。
+        # Si al liberar el lock una operación corta el hilo de refresco en segundo plano aún no se ha planificado, la nueva tarea debe, antes de leer
+        # Provider, claves y demás configuración global, aplicar primero la cola, y no seguir ejecutando todo el pipeline con la configuración antigua.
         _flush_pending_config_locked(suppress_save_errors=True)
         try:
             yield
@@ -322,11 +322,11 @@ def runtime_config_lock():
 @contextmanager
 def try_runtime_config_lock():
     """
-    尝试获取运行期配置锁，并立即返回是否成功。
+    Intenta obtener el lock de configuración de ejecución y devuelve inmediatamente si lo consiguió.
 
-    WebUI 试听属于用户主动触发的短操作，不应在后台视频任务持锁时等待数分钟。
-    调用方可以在未获取锁时就近提示用户稍后重试；成功获取后仍能保证试听期间
-    Provider、密钥和模型配置不会被其它会话修改。
+    WebUI La previsualización de audio es una operación corta iniciada por el usuario y no debe esperar varios minutos mientras una tarea de video en segundo plano tiene el lock.
+    Si no se obtiene el lock, el llamador puede avisar al usuario para que reintente más tarde; si se obtiene, se garantiza que durante la previsualización
+    Provider, claves y configuración del modelo no serán modificadas por otras sesiones.
     """
     acquired = _config_save_lock.acquire(blocking=False)
     try:
@@ -345,16 +345,16 @@ def is_running_in_container(
     cgroup_path: str = "/proc/1/cgroup",
 ) -> bool:
     """
-    判断当前进程是否运行在容器内。
+    Determina si el proceso actual se ejecuta dentro de un contenedor.
 
-    这个判断主要用于 Ollama 默认地址选择：
-    - 普通本机运行时，`localhost` 指向用户机器本身；
-    - Docker 容器内，`localhost` 指向容器自己，访问宿主机 Ollama
-      通常需要使用 `host.docker.internal`。
+    Esta comprobación se usa sobre todo para elegir la dirección por defecto de Ollama:
+    - en una ejecución local normal, `localhost` apunta a la máquina del usuario;
+    - Docker dentro de un contenedor, `localhost` apunta al propio contenedor, y para acceder al host Ollama
+      normalmente hay que usar `host.docker.internal`.
 
-    不能只判断 `/proc/1/cgroup` 是否存在，因为普通 Linux 也会有这个文件。
-    这里只在检测到明确的容器标记时返回 True，避免误伤非 Docker Linux 用户。
-    参数保留为可注入路径，便于单元测试覆盖不同运行环境。
+    No basta con comprobar si existe `/proc/1/cgroup`, porque un Linux normal también tiene ese archivo.
+    Aquí solo se devuelve True cuando se detecta un marcador claro de contenedor, para no afectar a usuarios de Linux sin Docker.
+    El parámetro se deja como ruta inyectable para que las pruebas unitarias cubran distintos entornos de ejecución.
     """
     if os.path.isfile(dockerenv_path) or os.path.isfile(containerenv_path):
         return True
@@ -377,9 +377,9 @@ def _can_resolve_hostname(hostname: str) -> bool:
 
 
 def _decode_linux_route_gateway(hex_gateway: str) -> str:
-    # /proc/net/route 里的 Gateway 是 16 进制小端序，例如 010011AC 表示
-    # 172.17.0.1。这里单独解析，是为了在原生 Linux Docker 没有
-    # host.docker.internal DNS 记录时，还能尝试访问容器默认网关上的宿主机。
+    # /proc/net/route El Gateway en él está en hexadecimal little-endian; por ejemplo, 010011AC significa
+    # 172.17.0.1. Se analiza aparte para que, cuando Docker nativo en Linux no tenga el registro
+    # host.docker.internal DNS , todavía se pueda intentar acceder al host a través de la puerta de enlace por defecto del contenedor.
     if len(hex_gateway) != 8:
         raise ValueError("invalid gateway length")
 
@@ -391,12 +391,12 @@ def _decode_linux_route_gateway(hex_gateway: str) -> str:
 
 def get_container_default_gateway_ip(route_path: str = "/proc/net/route") -> str:
     """
-    读取 Linux 容器里的默认网关 IP。
+    Lee la IP de la puerta de enlace por defecto dentro de un contenedor Linux.
 
-    Docker Desktop 通常提供 `host.docker.internal`，但原生 Linux Docker
-    默认不一定提供这个 DNS 名称。默认网关通常可以作为访问宿主机服务的
-    兜底地址；如果用户的 Ollama 只监听 127.0.0.1，则仍需要用户让
-    Ollama 监听宿主机网卡或手动配置 `ollama_base_url`。
+    Docker Desktop normalmente proporciona `host.docker.internal`, pero el nativo Linux Docker
+    no siempre proporciona ese nombre DNS por defecto. La puerta de enlace por defecto suele servir para acceder a servicios del host
+    como dirección de respaldo; si el Ollama del usuario solo escucha en 127.0.0.1, el usuario tendrá que hacer que
+    Ollama escuche en la interfaz de red del host o configurar manualmente `ollama_base_url`.
     """
     try:
         with open(route_path, mode="r", encoding="utf-8") as fp:
@@ -429,10 +429,10 @@ def get_container_default_gateway_ip(route_path: str = "/proc/net/route") -> str
 
 def get_default_ollama_base_url() -> str:
     """
-    返回 Ollama 的默认 OpenAI-compatible base_url。
+    Devuelve el base_url OpenAI-compatible por defecto de Ollama.
 
-    用户显式配置 `ollama_base_url` 时不会走这里；这里只处理“未配置时的
-    最佳默认值”。容器内默认指向宿主机，普通本机运行默认指向 localhost。
+    Cuando el usuario configura explícitamente `ollama_base_url` no se pasa por aquí; esto solo resuelve «el mejor valor por defecto
+    cuando no está configurado«. Dentro de un contenedor apunta al host por defecto; en una ejecución local normal apunta a localhost.
     """
     if not is_running_in_container():
         return "http://localhost:11434/v1"
@@ -457,12 +457,12 @@ def get_default_ollama_base_url() -> str:
 
 def _load_toml_config(config_path: str):
     """
-    加载 TOML，并兼容 Windows 编辑器可能写入的重复 UTF-8 BOM。
+    Carga TOML, tolerando los BOM UTF-8 duplicados que pueden escribir los editores de Windows.
 
-    ``utf-8-sig`` 只会移除文件开头的一个 BOM。部分 Windows 编辑器或
-    解压、保存流程可能再次写入 BOM，导致第二个不可见字符进入 TOML
-    解析器并在第一行报错。这里仅在标准解析失败后做一次只读归一化，
-    不回写原文件，避免意外覆盖用户已经填写的 API Key。
+    ``utf-8-sig`` solo elimina un BOM al inicio del archivo. Algunos editores de Windows o
+    procesos de descompresión y guardado pueden volver a escribir el BOM, haciendo que un segundo carácter invisible entre en TOML
+    el analizador y falle en la primera línea. Aquí solo se normaliza en modo lectura una vez que falla el análisis estándar,
+    sin reescribir el archivo original, para no sobrescribir por accidente las API Keys que el usuario ya rellenó.
     """
     try:
         return toml.load(config_path)
@@ -595,19 +595,19 @@ class _ConfigTomlEncoder(toml.TomlEncoder):
 
 def save_config():
     """
-    原子保存运行时配置。
+    Guarda de forma atómica la configuración en tiempo de ejecución.
 
-    Streamlit 的不同会话可能在相近时间触发配置保存。直接覆盖 config.toml 时，
-    另一个线程可能读取到只写了一部分的 TOML 内容。这里使用进程内可重入锁串行化
-    保存，并先写入同目录临时文件，再通过 os.replace 原子替换目标文件。
+    Streamlit Distintas sesiones de pueden disparar el guardado de configuración casi al mismo tiempo. Si se sobrescribe config.toml directamente,
+    otro hilo podría leer un TOML escrito solo a medias. Aquí se usa un lock reentrante del proceso para serializar
+    el guardado, escribiendo primero un archivo temporal en el mismo directorio y sustituyendo después el destino de forma atómica con os.replace.
 
-    Docker Desktop 单文件 bind mount 会把 config.toml 本身作为挂载点，
-    Linux 内核不允许通过 rename/replace 替换挂载点，因此会返回 EBUSY。
-    该场景下只能在锁内原地覆盖文件；其它异常仍然抛出，避免掩盖权限、磁盘
-    或路径错误。
+    Docker Desktop Un bind mount de un solo archivo convierte el propio config.toml en punto de montaje,
+    Linux y el kernel no permite sustituir un punto de montaje con rename/replace, por lo que devuelve EBUSY.
+    En ese caso solo se puede sobrescribir el archivo en el sitio dentro del lock; las demás excepciones se siguen lanzando para no ocultar errores de permisos, disco
+    o ruta.
 
-    这仍然保留项目现有的单用户全局配置语义，不额外引入复杂的多用户配置系统；
-    主要用于避免多标签页或快速 rerun 时损坏配置文件。
+    Esto mantiene la semántica actual del proyecto de configuración global de un solo usuario, sin introducir un sistema complejo de configuración multiusuario;
+    principalmente para evitar corromper el archivo de configuración con varias pestañas o reruns rápidos.
     """
     with _config_save_lock:
         config_to_save = dict(_cfg)
@@ -624,8 +624,8 @@ def save_config():
         config_to_save["diagnostics"] = dict(diagnostics)
         serialized_config = toml.dumps(config_to_save, encoder=_ConfigTomlEncoder())
 
-        # WebUI 完整 rerun 结束时会调用保存。内容没有变化时直接返回，避免每次
-        # 点击普通控件都产生一次磁盘写入和 fsync。
+        # WebUI Al terminar un rerun completo se llama al guardado. Si el contenido no cambió se devuelve directamente, para evitar que cada
+        # clic en un control normal provoque una escritura en disco y un fsync.
         try:
             with open(config_file, mode="r", encoding="utf-8") as f:
                 if f.read() == serialized_config:
@@ -709,17 +709,17 @@ app["redis_host"] = os.getenv(
 
 ffmpeg_path = app.get("ffmpeg_path", "")
 if ffmpeg_path:
-    # config.toml 同样允许 "~" / "${VAR}" 写法：先展开再做存在性判断，
-    # 否则 isfile() 永远不成立，配置被静默忽略。
+    # config.toml También se permiten las formas "~" / "${VAR}": se expanden primero y luego se comprueba si existen;
+    # de lo contrario isfile() nunca se cumpliría y la configuración se ignoraría en silencio.
     ffmpeg_path = os.path.expanduser(os.path.expandvars(ffmpeg_path))
     if os.path.isfile(ffmpeg_path):
         os.environ["IMAGEIO_FFMPEG_EXE"] = ffmpeg_path
 
-# 用户直接设置的 IMAGEIO_FFMPEG_EXE 也可能是 "~" / "${VAR}" 写法
-# （issue #1662）。MoviePy 2.x 在 import 时就通过 imageio 读取该变量
-# 并固定为 moviepy.config.FFMPEG_BINARY，之后不再重新解析；因此必须
-# 在本模块（所有入口最早的公共依赖，先于 moviepy 被导入）里完成展开，
-# 编码阶段才拿得到真实路径。
+# El IMAGEIO_FFMPEG_EXE que el usuario define directamente también puede usar las formas "~" / "${VAR}"
+# (issue #1662). MoviePy 2.x lee esta variable a través de imageio al importarse
+# y la fija como moviepy.config.FFMPEG_BINARY, sin volver a analizarla después; por eso
+# la expansión debe hacerse en este módulo (la dependencia común más temprana de todos los puntos de entrada, importada antes que moviepy),
+# para que la fase de codificación obtenga la ruta real.
 _env_ffmpeg = os.environ.get("IMAGEIO_FFMPEG_EXE")
 if _env_ffmpeg:
     os.environ["IMAGEIO_FFMPEG_EXE"] = os.path.expanduser(

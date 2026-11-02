@@ -1,4 +1,4 @@
-"""验证 Jalapeno 的 LLM 请求、Seedance 接入配置与付费任务边界。"""
+"""Verifica las peticiones LLM de Jalapeno, la configuración de integración de Seedance y los límites de las tareas de pago."""
 
 import json
 from types import SimpleNamespace
@@ -59,7 +59,7 @@ def test_llm_uses_real_sdk_and_provider_defaults(
                 "choices": [
                     {
                         "index": 0,
-                        "message": {"role": "assistant", "content": "测试成功"},
+                        "message": {"role": "assistant", "content": "Prueba exitosa"},
                         "finish_reason": "stop",
                     }
                 ],
@@ -78,7 +78,7 @@ def test_llm_uses_real_sdk_and_provider_defaults(
         jalapeno_model_name=model,
     )
     with patch.object(llm, "OpenAI", client):
-        assert llm._generate_response("测试", app_config=settings) == "测试成功"
+        assert llm._generate_response("Prueba", app_config=settings) == "Prueba exitosa"
     assert len(received) == 1
     assert str(received[0].url) == expected_url
     assert received[0].headers["Authorization"] == "Bearer shared-test-key"
@@ -360,7 +360,7 @@ def test_batch_jalapeno_requires_global_charge_confirmation(tmp_path):
 
 
 def test_queued_webui_video_keeps_the_confirmed_endpoint():
-    """真实队列延后执行：后续表单变化不能替换已确认的计费配置。"""
+    """Ejecución diferida en la cola real: los cambios posteriores del formulario no pueden sustituir la configuración de cobro ya confirmada."""
     from app.controllers.manager.memory_manager import InMemoryTaskManager
     from app.services import webui_task
 
@@ -401,7 +401,7 @@ def test_queued_webui_video_keeps_the_confirmed_endpoint():
 def test_pipeline_uses_one_endpoint_after_configuration_changes(
     tmp_path, confirmed_before_queue
 ):
-    """覆盖预检、配音、素材下载到实际 HTTP 参数，防止中途重新读取全局配置。"""
+    """Cubre desde la comprobación previa, la voz y la descarga de material hasta los parámetros HTTP reales, evitando releer la configuración global a mitad."""
     config.app.update(jalapeno_video_api_key="confirmed-key")
     confirmed = provider.endpoint() if confirmed_before_queue else None
     params = VideoParams(

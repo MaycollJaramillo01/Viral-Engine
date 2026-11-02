@@ -1,4 +1,4 @@
-"""发布标题降级时识别中日文句界，同时保留英文数字和原有元数据。"""
+"""Al degradar el título de publicación se reconocen los límites de frase en chino y japonés, conservando el inglés, los números y los metadatos originales."""
 
 import json
 from unittest.mock import patch
@@ -34,7 +34,7 @@ from app.services import llm
 )
 def test_social_title_fallback_sentence_boundaries(failure, subject, script, expected):
     if failure == "missing_key":
-        # 不替换响应函数，实际经过无密钥校验及降级逻辑。
+        # No sustituye la función de respuesta; pasa realmente por la validación sin clave y la lógica de degradación.
         context = patch.object(
             config, "app", {"llm_provider": "openai", "openai_api_key": ""}
         )

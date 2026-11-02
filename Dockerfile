@@ -6,21 +6,21 @@ COPY --from=ghcr.io/astral-sh/uv:0.12.12 /uv /usr/local/bin/uv
 # Set the working directory in the container
 WORKDIR /MoneyPrinterTurbo
 
-# 设置/MoneyPrinterTurbo目录权限为777
+# Establecer los permisos del directorio /MoneyPrinterTurbo a777
 RUN chmod 777 /MoneyPrinterTurbo
 
 ENV PYTHONPATH="/MoneyPrinterTurbo"
 
-# 本地用户默认继续优先使用国内镜像；GitHub Actions 发布 GHCR 镜像时使用 default，
-# 避免海外 runner 访问国内镜像过慢导致镜像发布长时间卡住。
+# Por defecto, los usuarios locales siguen priorizando los mirrors de China; al publicar la imagen GHCR desde GitHub Actions se usa default,
+# para evitar que los runners fuera de China accedan lentamente a los mirrors locales y bloqueen la publicación durante mucho tiempo.
 ARG DOCKER_BUILD_MIRROR=china
 ARG PIP_USE_OFFICIAL=0
 
-# 系统依赖安装需要同时满足两点：国内环境保留镜像回退能力，所有镜像均
-# 失败时必须让 Docker 构建立刻失败。旧循环最后执行的 sleep 总会返回 0，
-# 导致 git/ffmpeg 未安装时仍生成不可用镜像。这里把“写入软件源”“安装”
-# 和“三次重试”拆成边界清晰的 shell 函数，并用函数返回值决定是否继续。
-# 所有软件源统一使用 HTTPS，避免部分网络环境直接拦截明文 HTTP 请求。
+# La instalación de dependencias del sistema debe cumplir dos condiciones: conservar la capacidad de recurrir a mirrors en entornos de China y, si todos los mirrors
+# fallan, hacer que la compilación de Docker falle de inmediato. El último sleep del bucle anterior siempre devolvía 0,
+# por lo que se generaba una imagen inservible aunque git/ffmpeg no estuvieran instalados. Aquí se separan «escribir fuentes de software», «instalar»
+# y «tres reintentos» en funciones shell con límites claros, y el valor de retorno de cada función decide si se continúa.
+# Todas las fuentes de software usan HTTPS, para evitar que algunas redes bloqueen directamente las peticiones HTTP en texto plano.
 RUN set -u; \
     write_debian_sources() { \
         main_url="$1"; \
@@ -86,7 +86,7 @@ RUN set -u; \
 # Copy dependency inputs first to reuse the Docker dependency layer
 COPY requirements.txt requirements-security.txt ./
 
-# 本地默认优先国内 PyPI 镜像；GHCR 发布使用官方 PyPI，避免海外 runner 因跨境镜像访问变慢。
+# Localmente se prioriza por defecto el mirror PyPI de China; la publicación en GHCR usa el PyPI oficial, para que los runners fuera de China no se ralenticen con mirrors transfronterizos.
 RUN export UV_HTTP_TIMEOUT=60 UV_HTTP_RETRIES=3; \
     install_python_dependencies() { \
         uv pip install --system --no-cache --overrides requirements-security.txt \
@@ -106,8 +106,8 @@ COPY . .
 # Expose the port the app runs on
 EXPOSE 8501
 
-# 容器内部必须监听 0.0.0.0，宿主机仍通过 docker 端口映射限制为 127.0.0.1。
-# browser.serverAddress 只决定浏览器展示的访问地址，不能替代 server.address。
+# Dentro del contenedor se debe escuchar en 0.0.0.0; el host sigue limitado a 127.0.0.1 mediante el mapeo de puertos de docker.
+# browser.serverAddress solo determina la dirección de acceso mostrada en el navegador; no puede sustituir a server.address.
 CMD ["streamlit", "run", "./webui/Main.py", "--server.address=0.0.0.0", "--server.port=8501", "--browser.serverAddress=127.0.0.1", "--server.enableCORS=True", "--browser.gatherUsageStats=False", "--client.toolbarMode=minimal", "--logger.hideWelcomeMessage=True", "--server.showEmailPrompt=False"]
 
 # 1. Build the Docker image using the following command

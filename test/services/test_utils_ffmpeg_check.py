@@ -15,7 +15,7 @@ from app.utils import utils
 
 
 class TestCheckFfmpegReady(unittest.TestCase):
-    """覆盖 utils.check_ffmpeg_ready() 的四种探测结果。"""
+    """Cubre los cuatro resultados de detección de utils.check_ffmpeg_ready()."""
 
     def test_returns_true_when_ffmpeg_probe_succeeds(self):
         completed = subprocess.CompletedProcess(args=["ffmpeg", "-version"], returncode=0)
@@ -98,10 +98,10 @@ class TestGetFfmpegBinaryEnvExpansion(unittest.TestCase):
             )
 
     def test_normalizes_home_path_in_os_environ(self):
-        """get_ffmpeg_binary() 必须把展开后的路径写回环境变量。
+        """get_ffmpeg_binary() Debe escribirse de nuevo la ruta expandida en la variable de entorno.
 
-        MoviePy/imageio 直接读取 os.environ["IMAGEIO_FFMPEG_EXE"]，
-        只展开返回值会让预检通过而 MoviePy 编码仍然失败（issue #1662）。
+        MoviePy/imageio lee directamente os.environ["IMAGEIO_FFMPEG_EXE"],
+        y expandir solo el valor devuelto haría que la comprobación previa pasara pero la codificación de MoviePy siguiera fallando (issue #1662).
         """
         home = tempfile.mkdtemp(prefix="ffmpeg-home-")
         try:
@@ -133,16 +133,16 @@ class TestGetFfmpegBinaryEnvExpansion(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    shutil.which("ffmpeg"), "需要系统里存在真实 ffmpeg 才能做编码回归"
+    shutil.which("ffmpeg"), "se necesita un ffmpeg real en el sistema para la regresión de codificación"
 )
 class TestMoviePyEncodeWithExpandedEnv(unittest.TestCase):
-    """issue #1662 回归：MoviePy 实际编码链路。
+    """issue #1662 Regresión: cadena de codificación real de MoviePy.
 
-    MoviePy 2.x 在 import 时通过 imageio 一次性解析 ffmpeg 路径并缓存为
-    moviepy.config.FFMPEG_BINARY，测试进程里早已导入 moviepy，因此直接
-    在本进程写视频无法复现问题。这里用子进程按真实启动顺序执行：先加载
-    app.config（负责规范化 IMAGEIO_FFMPEG_EXE），再导入 moviepy 编码。
-    "~"、环境变量、绝对路径三种写法都必须产出真实视频文件。
+    MoviePy 2.x al importarse resuelve una sola vez la ruta de ffmpeg mediante imageio y la cachea como
+    moviepy.config.FFMPEG_BINARY; en el proceso de prueba moviepy ya está importado desde hace tiempo, así que
+    escribir el video directamente en este proceso no reproduce el problema. Aquí se ejecuta en un subproceso con el orden de arranque real: primero se carga
+    app.config(que normaliza IMAGEIO_FFMPEG_EXE) y luego se importa moviepy para codificar.
+    "~", la variable de entorno y la ruta absoluta: las tres formas deben producir un archivo de video real.
     """
 
     PROJECT_ROOT = str(Path(__file__).parent.parent.parent)
@@ -154,7 +154,7 @@ class TestMoviePyEncodeWithExpandedEnv(unittest.TestCase):
             os.symlink(shutil.which("ffmpeg"), self.linked_ffmpeg)
         except OSError:
             shutil.rmtree(self.bin_dir, ignore_errors=True)
-            self.skipTest("当前环境无法创建符号链接")
+            self.skipTest("el entorno actual no puede crear enlaces simbólicos")
 
     def tearDown(self):
         shutil.rmtree(self.bin_dir, ignore_errors=True)
@@ -164,7 +164,7 @@ class TestMoviePyEncodeWithExpandedEnv(unittest.TestCase):
             f"""
             import sys
             sys.path.insert(0, {self.PROJECT_ROOT!r})
-            import app.config.config  # noqa: F401  规范化必须先于 moviepy 初始化
+            import app.config.config  # noqa: F401  la normalización debe ocurrir antes de inicializar moviepy
             from moviepy import ColorClip
 
             clip = ColorClip(size=(8, 8), color=(0, 128, 255), duration=0.2)

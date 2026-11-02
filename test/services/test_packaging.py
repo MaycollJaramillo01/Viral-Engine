@@ -1,4 +1,4 @@
-"""验证安装入口、可写目录与资源初始化的关键边界。"""
+"""Verifica los límites clave del punto de entrada de instalación, los directorios escribibles y la inicialización de recursos."""
 
 from concurrent.futures import ThreadPoolExecutor
 import json
@@ -69,8 +69,8 @@ def test_cli_preserves_arguments_and_exit_status(monkeypatch):
 
     seen = []
     monkeypatch.setattr(cli, "run_cli", lambda args: seen.append(args) or 2)
-    assert launcher.main(["cli", "--video-script", "中文", "--stop-at", "script"]) == 2
-    assert seen == [["--video-script", "中文", "--stop-at", "script"]]
+    assert launcher.main(["cli", "--video-script", "Español", "--stop-at", "script"]) == 2
+    assert seen == [["--video-script", "Español", "--stop-at", "script"]]
 
 
 def test_webui_launch_uses_current_python_and_bundled_ui(monkeypatch):
@@ -116,12 +116,12 @@ def test_cli_stdout_contains_only_json(tmp_path):
     env = os.environ.copy()
     env["MPT_HOME"] = str(tmp_path / "data")
     result = subprocess.run(
-        [sys.executable, str(paths.SOURCE_ROOT / "cli.py"), "--video-script", "本地测试",
+        [sys.executable, str(paths.SOURCE_ROOT / "cli.py"), "--video-script", "prueba local",
          "--stop-at", "script"],
         cwd=tmp_path, env=env, text=True, capture_output=True, timeout=30,
     )
     assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout)["result"]["script"] == "本地测试"
+    assert json.loads(result.stdout)["result"]["script"] == "prueba local"
     assert "load config" in result.stderr
 
 

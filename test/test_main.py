@@ -10,8 +10,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 
 def test_main_starts_uvicorn_with_runtime_config():
     """
-    服务启动入口只负责把运行配置交给 Uvicorn。这里 mock 真正的服务器启动，
-    既避免测试占用端口，也确认监听地址、端口和热重载配置不会在入口层丢失。
+    El punto de entrada de arranque del servicio solo se encarga de pasar la configuración de ejecución a Uvicorn. Aquí se simula con mock el arranque real del servidor,
+    evitando que la prueba ocupe puertos y confirmando que la dirección de escucha, el puerto y la configuración de recarga en caliente no se pierden en la capa de entrada.
     """
     with (
         patch.object(config, "listen_host", "127.0.0.1"),

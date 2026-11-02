@@ -22,7 +22,7 @@ from app.utils import utils
 
 @asynccontextmanager
 async def application_lifespan(_: FastAPI):
-    """集中处理 API 进程启动恢复和关闭日志。"""
+    """Gestiona de forma centralizada la recuperación al arrancar y los registros de cierre del proceso de la API."""
     logger.info("startup event")
 
     configured_api_key = config.app.get("api_key", "")
@@ -31,15 +31,15 @@ async def application_lifespan(_: FastAPI):
             "API key authentication is disabled; keep the API on a trusted network"
         )
     elif isinstance(configured_api_key, str):
-        # 只记录保护范围，不得输出 Key、长度或摘要，避免凭据进入日志系统。
+        # Solo registra el ámbito de protección; nunca debe mostrar la Key, su longitud ni un resumen, para evitar que las credenciales entren en el sistema de registros.
         logger.info("API key authentication is enabled for /api/v1 and /tasks")
     else:
         logger.error(
             "API key authentication is misconfigured: app.api_key must be a string"
         )
 
-    # 跨平台发布由当前进程线程池执行，不会在服务重启后恢复。启动时把 Redis
-    # 中确认已失去执行进程的活动状态收敛为失败，避免任务永久无法删除。
+    # La publicación multiplataforma la ejecuta el pool de hilos del proceso actual y no se recupera tras reiniciar el servicio. Al arrancar, los estados activos Redis
+    # cuyo proceso de ejecución se confirma perdido se convierten en fallidos, para evitar tareas que nunca se puedan eliminar.
     from app.services import task as task_service
 
     task_service.recover_interrupted_cross_posts()
@@ -96,19 +96,19 @@ _DEFAULT_PORTS = {"http": 80, "https": 443}
 
 
 def _normalize_allowed_origin(raw_origin: str) -> str | None:
-    """把配置项折叠成浏览器实际发送的 Origin 形式。
+    """Normaliza el elemento de configuración a la forma de Origin que envía realmente el navegador.
 
-    Origin 请求头由 RFC 6454 固定为 ``scheme://host[:port]``：没有路径、没有尾
-    斜杠，scheme 与 host 已经规范化为小写，并且省略协议的默认端口。用户在浏览器
-    地址栏复制得到的 ``https://frontend.example/``，以及显式写出默认端口的
-    ``https://frontend.example:443``，都与浏览器实际发送的
-    ``https://frontend.example`` 逐字符不相等，白名单因此静默失效：前端只看到
-    CORS 报错，服务端只留下一行 blocked 日志，两边都指不到配置本身。
+    Origin La cabecera está fijada por el RFC 6454 como ``scheme://host[:port]``: sin ruta, sin barra
+    final, scheme y host ya normalizados en minúsculas, y omitiendo el puerto por defecto del protocolo. Lo que el usuario copia de la barra de direcciones
+    del navegador, como ``https://frontend.example/``, o lo que escribe con el puerto por defecto explícito
+    ``https://frontend.example:443``, no coincide carácter a carácter con lo que el navegador envía realmente
+    ``https://frontend.example`` , y la lista blanca falla en silencio: el frontend solo ve
+    CORS el error, el servidor solo deja una línea de log blocked, y ninguno de los dos apunta a la propia configuración.
 
-    返回 ``None`` 表示该写法不可能匹配任何 Origin（缺少 scheme、scheme 不是
-    http/https、主机名为空或含空白、IPv6 字面量畸形、端口非法或越界），调用方应
-    丢弃并告警。解析失败必须收敛成 ``None``：本函数在模块导入期就会执行，让
-    ``urlsplit()`` 的 ``ValueError`` 冒出去等于整条 API 无法启动。
+    Devolver ``None`` significa que esa forma no puede coincidir con ningún Origin (falta el scheme, el scheme no es
+    http/https, el host está vacío o contiene espacios, el literal IPv6 está mal formado, o el puerto es ilegal o está fuera de rango); el llamador debe
+    descartarla y emitir una advertencia. Los fallos de análisis deben convertirse en ``None``: esta función se ejecuta al importar el módulo, y dejar que
+    ``urlsplit()`` el ``ValueError`` se propague equivale a que toda la API no pueda arrancar.
     """
 
     if raw_origin == "*":
@@ -117,23 +117,23 @@ def _normalize_allowed_origin(raw_origin: str) -> str | None:
     try:
         parsed = urlsplit(raw_origin)
         scheme = parsed.scheme.lower()
-        # 读取 hostname / port 时才校验 netloc：畸形 IPv6 字面量由 urlsplit()
-        # 抛出，非数字端口与超出 0-65535 的端口在读取 port 时抛出。
+        # netloc solo se valida al leer hostname / port: los literales IPv6 mal formados los urlsplit()
+        # lanza, y los puertos no numéricos o fuera de 0-65535 lanzan al leer port.
         host = parsed.hostname
         port = parsed.port
     except ValueError:
         return None
 
-    # 只有 http/https 具备浏览器 Origin 语义，且两者都有可省略的默认端口。
+    # Solo http/https tienen semántica de Origin del navegador, y ambos tienen un puerto por defecto omitible.
     if scheme not in _DEFAULT_PORTS or not host:
         return None
     if any(character.isspace() for character in host):
         return None
 
-    # 显式小写，不依赖 urlsplit 在不同 Python 版本上的大小写处理。
+    # Minúsculas explícitas, sin depender de cómo trate urlsplit las mayúsculas en distintas versiones de Python.
     host = host.lower()
-    # 浏览器序列化 Origin 时给 IPv6 字面量保留方括号；``:443``、``:0443``、
-    # ``:80`` 这类默认端口写法必须折叠成不带端口的形态才能与真实前端匹配。
+    # Al serializar el Origin, el navegador conserva los corchetes de los literales IPv6; ``:443``, ``:0443``,
+    # ``:80`` y formas similares del puerto por defecto deben normalizarse sin puerto para coincidir con el frontend real.
     if ":" in host:
         host = f"[{host}]"
     if port is None or port == _DEFAULT_PORTS[scheme]:
@@ -142,23 +142,23 @@ def _normalize_allowed_origin(raw_origin: str) -> str | None:
 
 
 def parse_cors_allowed_origins(raw_origins: str | None) -> list[str]:
-    """解析浏览器跨域来源白名单。
+    """Analiza la lista blanca de orígenes cross-origin del navegador.
 
-    CORS 只约束浏览器中的跨域 JavaScript，不影响 curl、Postman、n8n
-    或服务端 SDK。未配置时返回空列表，表示默认不开放跨域访问；用户确实
-    部署了独立网页前端时，再通过 ``CORS_ALLOWED_ORIGINS`` 显式开启。
+    CORS Solo restringe el JavaScript cross-origin en el navegador; no afecta a curl, Postman,n8n
+    ni a SDKs del lado del servidor. Si no está configurado devuelve una lista vacía, es decir, por defecto no se permite el acceso cross-origin; cuando el usuario realmente
+    despliega un frontend web independiente, debe habilitarlo explícitamente con ``CORS_ALLOWED_ORIGINS``.
 
-    每个来源都先折叠成 Origin 请求头的规范形式，因此 ``https://a.example/``、
-    ``HTTPS://A.Example`` 与显式默认端口的 ``https://a.example:443`` 得到同一个
-    结果，无法匹配任何 Origin 的写法会被丢弃并留下告警。畸形条目只丢弃自身，
-    不会中断这里的解析——本函数在模块导入期调用，解析异常会让 API 无法启动。
+    Cada origen se normaliza primero a la forma canónica de la cabecera Origin, por lo que ``https://a.example/``,
+    ``HTTPS://A.Example`` y ``https://a.example:443`` con el puerto por defecto explícito producen el mismo
+    resultado; las formas que no pueden coincidir con ningún Origin se descartan con una advertencia. Una entrada mal formada solo se descarta a sí misma
+    y no interrumpe el análisis: esta función se llama al importar el módulo y una excepción haría que la API no pudiera arrancar.
     """
 
     if not raw_origins:
         return []
 
-    # 去除逗号分隔项两侧的空白，并忽略空项，避免常见的环境变量格式
-    # ``https://a.example, https://b.example,`` 产生永远无法匹配的来源。
+    # Elimina los espacios a ambos lados de los elementos separados por comas e ignora los vacíos, para evitar que formatos habituales de variables de entorno
+    # ``https://a.example, https://b.example,`` produzcan orígenes que nunca coincidirán.
     origins: list[str] = []
     for candidate in raw_origins.split(","):
         item = candidate.strip()
@@ -177,7 +177,7 @@ def parse_cors_allowed_origins(raw_origins: str | None) -> list[str]:
 
 
 def configure_cors(instance: FastAPI, allowed_origins: list[str]) -> None:
-    """按显式白名单配置 CORS；空白名单保持默认同源策略。"""
+    """Configura CORS según la lista blanca explícita; una lista vacía mantiene la política same-origin por defecto."""
 
     if not allowed_origins:
         logger.info(
@@ -189,8 +189,8 @@ def configure_cors(instance: FastAPI, allowed_origins: list[str]) -> None:
     allow_all_origins = "*" in allowed_origins
     configured_api_key = config.app.get("api_key", "")
     if allow_all_origins and configured_api_key in (None, ""):
-        # ``*`` 是用户显式选择的兼容模式，因此不强制拒绝启动；但在免认证
-        # 状态下它会允许任意网页读取和调用 API，必须留下可定位的安全告警。
+        # ``*`` es un modo de compatibilidad elegido explícitamente por el usuario, así que no se fuerza el rechazo del arranque; pero sin autenticación
+        # permite que cualquier web lea y llame a la API, por lo que debe dejar una advertencia de seguridad localizable.
         logger.warning(
             "CORS allows every browser origin while API key authentication is "
             "disabled; configure app.api_key or restrict CORS_ALLOWED_ORIGINS"
@@ -199,15 +199,15 @@ def configure_cors(instance: FastAPI, allowed_origins: list[str]) -> None:
     instance.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
-        # Starlette 在 ``*`` 与 credentials 同时启用时会反射任意 Origin。
-        # 通配符模式不需要 Cookie 认证，因此主动关闭 credentials；显式来源
-        # 仍保留旧行为，避免影响已有独立网页前端的 credentials 请求模式。
+        # Starlette refleja cualquier Origin cuando ``*`` y credentials están activados a la vez.
+        # El modo comodín no necesita autenticación por cookies, así que desactiva credentials; los orígenes explícitos
+        # mantienen el comportamiento anterior para no afectar al modo de credentials de los frontends web independientes existentes.
         allow_credentials=not allow_all_origins,
         allow_methods=["*"],
         allow_headers=["*"],
-        # 远程 HTTPS 前端访问本机或局域网 API 时，现代浏览器会额外发送
-        # Private Network Access 预检。只有精确白名单来源可以获得许可；
-        # 通配符模式继续拒绝，避免任意网站探测用户的私有网络服务。
+        # Cuando un frontend HTTPS remoto accede a una API local o de red local, los navegadores modernos envían además
+        # Private Network Access una petición preflight. Solo los orígenes exactos de la lista blanca obtienen permiso;
+        # el modo comodín sigue rechazándola, para evitar que cualquier web sondee los servicios de red privada del usuario.
         allow_private_network=not allow_all_origins,
     )
 
@@ -215,30 +215,30 @@ def configure_cors(instance: FastAPI, allowed_origins: list[str]) -> None:
 def is_browser_origin_allowed(
     request: Request, allowed_origins: list[str]
 ) -> bool:
-    """判断浏览器请求来源是否为同源或显式白名单来源。"""
+    """Determina si el origen de la petición del navegador es el mismo origen o un origen explícito de la lista blanca."""
 
     origin = request.headers.get("origin")
     if not origin:
-        # curl、Postman、n8n 和服务端 SDK 通常不发送 Origin。保留这类请求，
-        # 避免安全修复错误地改变现有 API 客户端的调用契约。
+        # curl, Postman, n8n y los SDKs de servidor normalmente no envían Origin. Estas peticiones se conservan
+        # para evitar que una corrección de seguridad cambie por error el contrato de llamada de los clientes API existentes.
         return True
     if "*" in allowed_origins or origin in allowed_origins:
         return True
 
-    # 浏览器对同源 POST 也可能发送 Origin。仅比较 scheme + authority，忽略
-    # 路径和查询参数；反向代理部署若未正确转发公网 scheme/host，可通过显式
-    # CORS_ALLOWED_ORIGINS 声明外部来源，避免依赖不可信的转发 Header。
+    # Los navegadores también pueden enviar Origin en un POST del mismo origen. Solo se comparan scheme + authority, ignorando
+    # la ruta y los parámetros de consulta; si un proxy inverso no reenvía correctamente el scheme/host públicos, se puede
+    # CORS_ALLOWED_ORIGINS declarar explícitamente el origen externo, evitando depender de cabeceras reenviadas no confiables.
     request_url = urlsplit(str(request.url))
     request_origin = f"{request_url.scheme}://{request_url.netloc}"
     return origin == request_origin
 
 
 def configure_browser_access(instance: FastAPI, allowed_origins: list[str]) -> None:
-    """同时配置服务端 Origin 防护与浏览器 CORS 响应策略。"""
+    """Configura a la vez la protección de Origin del servidor y la política de respuesta CORS del navegador."""
 
     @instance.middleware("http")
     async def reject_untrusted_browser_origin(request: Request, call_next):
-        """主动拒绝不可信浏览器来源，覆盖无需 CORS 预检的简单请求。"""
+        """Rechaza activamente orígenes de navegador no confiables, cubriendo peticiones simples que no requieren preflight CORS."""
 
         if not is_browser_origin_allowed(request, allowed_origins):
             origin = request.headers.get("origin", "")
@@ -256,8 +256,8 @@ def configure_browser_access(instance: FastAPI, allowed_origins: list[str]) -> N
 
         return await call_next(request)
 
-    # CORS 中间件最后注册后位于 Origin 防护外层：可信预检可直接成功，
-    # 非可信预检由 CORS 拒绝；无需预检的实际请求仍会进入上面的 403 防护。
+    # CORS El middleware registrado al final queda por fuera de la protección de Origin: los preflight confiables pueden tener éxito directamente,
+    # los no confiables los rechaza CORS; las peticiones reales sin preflight siguen pasando por la protección 403 de arriba.
     configure_cors(instance, allowed_origins)
 
 
@@ -286,11 +286,11 @@ app = get_application()
 
 @app.middleware("http")
 async def protect_generated_task_files(request: Request, call_next):
-    """保护任务产物静态路由，防止绕过 API 鉴权直接下载。
+    """Protege la ruta estática de artefactos de tareas, evitando descargas directas que se salten la autenticación de la API.
 
-    ``/tasks`` 由 StaticFiles 独立挂载，无法复用 APIRouter 的依赖，
-    因此在中间件中调用同一个 verify_token。鉴权函数会在未配置
-    api_key 时放行；OPTIONS 预检请求也保留给 CORS 中间件处理。
+    ``/tasks`` se monta de forma independiente con StaticFiles y no puede reutilizar las dependencias de APIRouter,
+    por eso se llama al mismo verify_token dentro del middleware. La función de autenticación deja pasar
+    api_key cuando no está configurado; las peticiones preflight OPTIONS también se dejan al middleware CORS.
     """
 
     request_path = request.url.path
@@ -304,7 +304,7 @@ async def protect_generated_task_files(request: Request, call_next):
     return await call_next(request)
 
 
-# 默认遵循浏览器同源策略；仅在用户显式配置可信网页来源时开放跨域。
+# Por defecto se sigue la política same-origin del navegador; solo se abre el acceso cross-origin cuando el usuario configura explícitamente orígenes web confiables.
 cors_allowed_origins = parse_cors_allowed_origins(
     os.getenv("CORS_ALLOWED_ORIGINS", "")
 )

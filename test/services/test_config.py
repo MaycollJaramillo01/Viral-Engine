@@ -17,7 +17,7 @@ from app.models.llm_provider import LLM_PROVIDER_REGISTRY, get_llm_provider
 class TestConfigPersistence:
     @staticmethod
     def _wait_for_deferred_flush(timeout=1):
-        """等待配置刷新线程退出，避免并发测试之间共享后台状态。"""
+        """Espera a que salga el hilo de refresco de configuración, para que pruebas concurrentes no compartan estado en segundo plano."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             with config._pending_config_lock:
@@ -32,7 +32,7 @@ class TestConfigPersistence:
         return tomllib.loads(config_path.read_text(encoding="utf-8"))
 
     def test_example_config_documents_runtime_settings(self):
-        """示例配置应展示用户需要手工维护的服务、素材和高级运行参数。"""
+        """La configuración de ejemplo debe mostrar los servicios, el material y los parámetros avanzados de ejecución que el usuario debe mantener a mano."""
         example_config = self._load_example_config()
         app_config = example_config["app"]
 
@@ -91,7 +91,7 @@ class TestConfigPersistence:
         assert example_config["whisper"]["device"] == "cpu"
 
     def test_example_config_covers_llm_provider_registry(self):
-        """Registry 中可配置的 Provider 字段必须能在示例文件中被发现。"""
+        """Registry Los campos de Provider configurables en deben poder encontrarse en el archivo de ejemplo."""
         app_config = self._load_example_config()["app"]
 
         for provider in LLM_PROVIDER_REGISTRY:
@@ -105,11 +105,11 @@ class TestConfigPersistence:
                 assert provider.config_key(field.config_suffix) in app_config
 
     def test_example_ui_block_documents_every_pinnable_default(self):
-        """[ui] 注释块必须列出代码真正会从 [ui] 读取的每个键。
+        """[ui] El bloque de comentarios debe listar cada clave que el código lee realmente de [ui].
 
-        该块是用户手工固定初始默认值的唯一入口，因此只列出部分键会让设置
-        静默失效：用户照着示例写了 [ui].subtitle_display_mode，却因为示例
-        没提而根本不知道它存在。断言从源码里推导，新增可固定字段时会先失败。
+        Este bloque es la única forma de que el usuario fije a mano los valores por defecto iniciales, así que listar solo algunas claves haría que los ajustes
+        fallaran en silencio: el usuario escribiría [ui].subtitle_display_mode siguiendo el ejemplo, pero como el ejemplo
+        no lo mencionaba ni sabría que existe. La aserción se deduce del código fuente, y al añadir campos fijables fallará primero.
         """
         project_root = Path(__file__).resolve().parents[2]
         ui_block = (project_root / "config.example.toml").read_text(
@@ -132,7 +132,7 @@ class TestConfigPersistence:
         assert pinnable <= documented, sorted(pinnable - documented)
 
     def test_load_config_accepts_repeated_utf8_bom_without_rewriting_file(self):
-        """重复 BOM 不应阻止 Windows 用户启动，也不能改写已有配置。"""
+        """Un BOM duplicado no debe impedir que los usuarios de Windows arranquen, ni reescribir la configuración existente."""
         with TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.toml"
             original_content = b"\xef\xbb\xbf\xef\xbb\xbf[app]\nvideo_source = \"pexels\"\n"
@@ -145,7 +145,7 @@ class TestConfigPersistence:
             assert config_path.read_bytes() == original_content
 
     def test_load_config_still_rejects_invalid_toml_after_bom_normalization(self):
-        """BOM 兼容不能掩盖真实语法错误，失败时应保留明确诊断日志。"""
+        """BOM La compatibilidad no puede ocultar errores de sintaxis reales; al fallar debe conservar un log de diagnóstico claro."""
         with TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.toml"
             config_path.write_text("[app\nvideo_source = \"pexels\"\n", encoding="utf-8")
@@ -202,14 +202,14 @@ class TestConfigPersistence:
             assert sentinel.read_text(encoding="utf-8") == "keep this file"
 
     def test_kimi_uses_current_default_model(self):
-        """Kimi 未配置模型覆盖值时，应使用当前发布版本的默认模型。"""
+        """Kimi Sin sobrescritura de modelo configurada, se debe usar el modelo por defecto de la versión publicada actual."""
         provider = get_llm_provider("moonshot")
 
         assert provider is not None
         assert provider.resolve_model_name("") == "kimi-k3"
 
     def test_upload_post_settings_belong_to_app_section(self):
-        """发布配置必须位于 app 节点，确保示例文件与运行时读取路径一致。"""
+        """La configuración de publicación debe estar en el nodo app, para que el archivo de ejemplo coincida con la ruta de lectura en tiempo de ejecución."""
         example_config = self._load_example_config()
         upload_post_keys = {
             "upload_post_enabled",
@@ -226,8 +226,8 @@ class TestConfigPersistence:
 
     def test_save_config_uses_parseable_atomic_output(self):
         """
-        配置保存先写临时文件再原子替换。测试同时确认输出仍是合法 TOML，
-        且成功保存后不会在配置目录遗留临时文件。
+        El guardado de configuración escribe primero un archivo temporal y luego lo sustituye de forma atómica. La prueba confirma además que la salida sigue siendo TOML válido
+        y que tras guardar con éxito no quedan archivos temporales en el directorio de configuración.
         """
         original_cfg = dict(config._cfg)
         original_app = dict(config.app)
@@ -252,8 +252,8 @@ class TestConfigPersistence:
 
     def test_save_config_falls_back_for_bind_mounted_file(self):
         """
-        Docker Desktop 的单文件挂载点不能被 os.replace 替换。遇到 EBUSY 时
-        应在锁内原地覆盖，并确保最终内容完整、可解析且不遗留临时文件。
+        Docker Desktop Un punto de montaje de un solo archivo de no se puede sustituir con os.replace. Ante EBUSY
+        debe sobrescribirse en el sitio dentro del lock, garantizando que el contenido final esté completo, sea analizable y no deje archivos temporales.
         """
         original_cfg = dict(config._cfg)
         original_app = dict(config.app)
@@ -289,7 +289,7 @@ class TestConfigPersistence:
             config._cfg.update(original_cfg)
 
     def test_save_config_does_not_hide_other_replace_errors(self):
-        """非 EBUSY 错误必须继续抛出，不能把权限或磁盘故障伪装成保存成功。"""
+        """Los errores que no son EBUSY deben seguir lanzándose, sin disfrazar fallos de permisos o de disco como un guardado exitoso."""
         original_cfg = dict(config._cfg)
         original_app = dict(config.app)
         try:
@@ -368,7 +368,7 @@ class TestConfigPersistence:
             config._cfg.update(original_cfg)
 
     def test_runtime_config_lock_blocks_concurrent_config_writes(self):
-        """长任务持有运行锁时，其它会话不能在任务中途改写全局配置。"""
+        """Mientras una tarea larga mantiene el lock de ejecución, otras sesiones no pueden reescribir la configuración global a mitad de la tarea."""
         write_started = threading.Event()
         write_finished = threading.Event()
 
@@ -389,7 +389,7 @@ class TestConfigPersistence:
         config.app.pop("runtime_lock_test", None)
 
     def test_runtime_config_lock_allows_idempotent_page_writes(self):
-        """生成期间刷新页面时，相同控件值的回写不能阻塞整页渲染。"""
+        """Al refrescar la página durante la generación, volver a escribir los mismos valores de los controles no puede bloquear el renderizado de toda la página."""
         key = "runtime_lock_idempotent_test"
         config.app[key] = "unchanged"
         write_finished = threading.Event()
@@ -411,7 +411,7 @@ class TestConfigPersistence:
         config.app.pop(key, None)
 
     def test_try_runtime_config_lock_returns_immediately_when_busy(self):
-        """试听锁不能等待长任务释放全局配置，忙碌时应立即让 UI 提示重试。"""
+        """El lock de previsualización no puede esperar a que la tarea larga libere la configuración global; si está ocupado, la UI debe pedir de inmediato que se reintente."""
         attempted = threading.Event()
         result = []
 
@@ -432,7 +432,7 @@ class TestConfigPersistence:
             assert acquired is True
 
     def test_nonblocking_update_is_applied_after_runtime_task_finishes(self):
-        """WebUI 改动不能等待长任务，且任务结束后必须应用并保存最新值。"""
+        """WebUI los cambios no pueden esperar a la tarea larga, y al terminar la tarea deben aplicarse y guardarse los últimos valores."""
         key = "nonblocking_runtime_update_test"
         original_value = config.app.get(key, config._MISSING)
         update_finished = threading.Event()
@@ -463,7 +463,7 @@ class TestConfigPersistence:
                 config.app[key] = original_value
 
     def test_nonblocking_update_keeps_only_latest_value(self):
-        """同一控件在任务期间反复修改时，只应用最后一次选择。"""
+        """Si el mismo control se modifica repetidamente durante la tarea, solo se aplica la última elección."""
         key = "nonblocking_latest_value_test"
         original_value = config.app.get(key, config._MISSING)
         updates_finished = threading.Event()
@@ -489,7 +489,7 @@ class TestConfigPersistence:
                 config.app[key] = original_value
 
     def test_nonblocking_delete_is_applied_after_runtime_task_finishes(self):
-        """切回默认选项时，删除配置同样不能阻塞正在运行的视频任务。"""
+        """Al volver a la opción por defecto, borrar la configuración tampoco puede bloquear la tarea de video en ejecución."""
         key = "nonblocking_runtime_delete_test"
         config.app[key] = "custom"
         delete_finished = threading.Event()
@@ -515,7 +515,7 @@ class TestConfigPersistence:
             config.app.pop(key, None)
 
     def test_try_save_config_returns_immediately_while_runtime_task_is_active(self):
-        """页面 rerun 请求保存时不能等待视频任务释放配置锁。"""
+        """Cuando el rerun de la página pide guardar, no puede esperar a que la tarea de video libere el lock de configuración."""
         save_finished = threading.Event()
         save_result = []
 
@@ -536,7 +536,7 @@ class TestConfigPersistence:
         self._wait_for_deferred_flush()
 
     def test_try_runtime_lock_flushes_updates_queued_during_operation(self):
-        """短操作释放配置锁时，也必须应用并保存期间到达的页面修改。"""
+        """Cuando una operación corta libera el lock de configuración, también debe aplicar y guardar las modificaciones de la página llegadas mientras tanto."""
         key = "try_runtime_queued_update_test"
         original_value = config.app.get(key, config._MISSING)
         update_finished = threading.Event()
@@ -566,7 +566,7 @@ class TestConfigPersistence:
                 config.app[key] = original_value
 
     def test_update_queued_during_save_is_flushed_after_lock_release(self):
-        """退出保存期间的新修改不能停留在队列中，也不能被较早值覆盖。"""
+        """Las nuevas modificaciones durante el guardado de salida no pueden quedarse en la cola ni ser sobrescritas por valores anteriores."""
         key = "late_runtime_update_test"
         original_value = config.app.get(key, config._MISSING)
         runtime_entered = threading.Event()
@@ -603,8 +603,8 @@ class TestConfigPersistence:
                 release_runtime.set()
                 assert first_save_started.wait(timeout=1)
 
-                # 第一轮保存已经取得配置快照，此时到达的值必须由后台刷新线程
-                # 在锁释放后再次应用和保存，最终结果应以该值为准。
+                # La primera ronda de guardado ya obtuvo la instantánea de configuración; los valores que llegan en ese momento debe
+                # aplicarlos y guardarlos de nuevo el hilo de refresco en segundo plano tras liberarse el lock, y el resultado final debe basarse en ese valor.
                 assert not config.update_config_nonblocking(config.app, key, "latest")
                 release_first_save.set()
 
@@ -624,7 +624,7 @@ class TestConfigPersistence:
                 config.app[key] = original_value
 
     def test_config_snapshot_includes_pending_updates(self):
-        """视频生成占锁时，新 LLM 请求应看到界面最新选择而非旧配置。"""
+        """Mientras la generación de video ocupa el lock, las nuevas peticiones LLM deben ver la última selección de la interfaz y no la configuración antigua."""
         keys = {
             "llm_provider": "pending-provider",
             "pending-provider_api_key": "pending-key",

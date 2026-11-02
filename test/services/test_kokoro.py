@@ -1,4 +1,4 @@
-"""Kokoro 协议兼容和共享音频传输回归，不依赖外部服务。"""
+"""Kokoro Regresión de compatibilidad de protocolo y transporte de audio compartido, sin depender de servicios externos."""
 
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -99,7 +99,7 @@ def test_transport_closes_audio_and_preserves_contract(monkeypatch, tmp_path, pr
 @pytest.mark.parametrize("provider", ["kokoro", "chatterbox"])
 @pytest.mark.parametrize("failure", ["empty", "decode", "zero", "nan", "replace", "http", "timeout", "connect_timeout"])
 def test_failed_audio_never_overwrites_output(monkeypatch, tmp_path, provider, failure):
-    """失败保留原文件，解码资源与临时文件均释放，包括 Windows 替换失败。"""
+    """Si falla se conserva el archivo original, y se liberan los recursos de decodificación y los archivos temporales, incluso si falla la sustitución en Windows."""
     output = tmp_path / "existing.mp3"
     output.write_bytes(b"previous audio")
     post = Mock(return_value=SimpleNamespace(

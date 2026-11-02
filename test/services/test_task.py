@@ -26,8 +26,8 @@ RUN_INTEGRATION_TESTS = os.environ.get("MPT_RUN_INTEGRATION_TESTS", "").lower() 
 
 class TestTaskService(unittest.TestCase):
     def setUp(self):
-        # 发布 Future 注册表是进程级状态。测试间清理可以避免某个模拟 Future
-        # 影响后续恢复测试，同时不会触碰真正线程池中的生产任务。
+        # El registro de Futures de publicación es estado a nivel de proceso. Limpiarlo entre pruebas evita que una simulación Future
+        # afecte a pruebas de recuperación posteriores, sin tocar tareas de producción en el pool de hilos real.
         with tm._cross_post_registry_lock:
             tm._cross_post_futures.clear()
 
@@ -36,7 +36,7 @@ class TestTaskService(unittest.TestCase):
             tm._cross_post_futures.clear()
 
     def test_is_task_busy_covers_generation_and_cross_posting(self):
-        """删除入口必须同时识别视频生成和跨平台发布的活跃状态。"""
+        """El punto de borrado debe reconocer a la vez el estado activo de la generación de video y de la publicación multiplataforma."""
         busy_tasks = (
             {"state": tm.const.TASK_STATE_PROCESSING},
             {
@@ -64,34 +64,34 @@ class TestTaskService(unittest.TestCase):
 
     def test_generate_script_forwards_advanced_prompt_options(self):
         """
-        任务生成入口和 WebUI/API 共用 VideoParams。这里验证自动生成文案时，
-        高级提示词参数会继续传到 LLM 服务层，避免只在 /scripts 接口生效。
+        El punto de entrada de generación de tareas y la WebUI/API comparten VideoParams. Aquí se verifica que al generar el texto automáticamente,
+        los parámetros de prompt avanzados siguen llegando a la capa de servicio LLM, para que no solo funcionen en la interfaz /scripts.
         """
         params = VideoParams(
-            video_subject="咖啡",
+            video_subject="café",
             video_script="",
             video_language="zh-CN",
             paragraph_number=2,
-            video_script_prompt="语气轻松",
+            video_script_prompt="tono relajado",
             custom_system_prompt="Only write short narration.",
         )
 
         with patch.object(
-            tm.llm, "generate_script", return_value="生成的文案"
+            tm.llm, "generate_script", return_value="texto generado"
         ) as generate:
             result = tm.generate_script("task-id", params)
 
-        self.assertEqual(result, "生成的文案")
+        self.assertEqual(result, "texto generado")
         generate.assert_called_once_with(
-            video_subject="咖啡",
+            video_subject="café",
             language="zh-CN",
             paragraph_number=2,
-            video_script_prompt="语气轻松",
+            video_script_prompt="tono relajado",
             custom_system_prompt="Only write short narration.",
         )
 
     def test_generate_final_videos_forwards_clip_speed_and_fit_mode(self):
-        """任务编排层必须把画面速度和适配模式传给视频合成服务。"""
+        """La capa de orquestación de tareas debe pasar la velocidad de imagen y el modo de ajuste al servicio de composición de video."""
         params = VideoParams(
             video_subject="test",
             video_count=1,
@@ -121,11 +121,11 @@ class TestTaskService(unittest.TestCase):
 
     def test_stage_progress_reporter_maps_fraction_into_stage_range(self):
         """
-        阶段内 0~1 的完成比例要换算到该阶段占用的进度区间，并保留任务已有的
-        其它字段。越界或无法解析的比例不能把进度推到区间之外。
+        La proporción completada 0~1 dentro de una fase debe convertirse al intervalo de progreso que ocupa esa fase, conservando los demás
+        campos ya existentes de la tarea. Las proporciones fuera de rango o no analizables no pueden llevar el progreso fuera del intervalo.
         """
         state = MemoryState()
-        state.update_task("stage-progress", progress=40, video_subject="咖啡")
+        state.update_task("stage-progress", progress=40, video_subject="café")
 
         with patch.object(tm.sm, "state", state):
             report = tm._stage_progress_reporter("stage-progress", 40, 50)
@@ -148,10 +148,10 @@ class TestTaskService(unittest.TestCase):
 
         self.assertEqual(task["progress"], 45)
         self.assertEqual(task["state"], tm.const.TASK_STATE_PROCESSING)
-        self.assertEqual(task["video_subject"], "咖啡")
+        self.assertEqual(task["video_subject"], "café")
 
     def test_stage_progress_reporter_survives_state_backend_failure(self):
-        """进度只是展示信息，状态后端暂时不可用时不能让下载或合成失败。"""
+        """El progreso es solo información de visualización; si el backend de estado no está disponible temporalmente no puede hacer fallar la descarga ni la composición."""
         with (
             patch.object(
                 tm.sm.state, "update_task", side_effect=RuntimeError("redis down")
@@ -165,8 +165,8 @@ class TestTaskService(unittest.TestCase):
 
     def test_material_download_moves_progress_between_40_and_50(self):
         """
-        素材下载是慢速网络下最耗时的阶段，此前进度一直停在 40%，全部下完才
-        跳到 50%。下载过程中报告的完成比例必须反映到任务进度上。
+        La descarga de material es la fase más lenta en redes lentas; antes el progreso se quedaba en el 40% y solo al terminar todo
+        saltaba al 50%. La proporción completada que se informa durante la descarga debe reflejarse en el progreso de la tarea.
         """
         params = VideoParams(video_subject="test", video_source="pexels")
         state = MemoryState()
@@ -194,8 +194,8 @@ class TestTaskService(unittest.TestCase):
 
     def test_clip_processing_moves_progress_through_the_combine_half(self):
         """
-        片段处理期间进度此前固定在 50%。合成占每条视频进度份额的前一半：
-        单条视频时为 50%~75%，两条视频时第二条从 75% 开始。
+        Durante el procesado de fragmentos el progreso estaba fijo en el 50%. La composición ocupa la primera mitad de la parte de progreso de cada video:
+        con un solo video va del 50% al 75%; con dos videos, el segundo empieza en el 75%.
         """
         for video_count, expected in (
             (1, [[62, 75]]),
@@ -239,7 +239,7 @@ class TestTaskService(unittest.TestCase):
                 )
 
     def test_generate_final_videos_uses_generated_sonilo_music(self):
-        """Sonilo 必须针对每条拼接后的视频生成配乐，并传给最终混音。"""
+        """Sonilo Debe generarse música para cada video concatenado y pasarse a la mezcla final."""
         params = VideoParams(
             video_subject="test",
             video_count=1,
@@ -276,7 +276,7 @@ class TestTaskService(unittest.TestCase):
         )
 
     def test_generate_final_videos_uses_generated_elevenlabs_music(self):
-        """ElevenLabs 应复用视频配乐编排，并使用通用风格提示词。"""
+        """ElevenLabs Debe reutilizar la orquestación de música del video y usar un prompt de estilo genérico."""
         params = VideoParams(
             video_subject="test",
             video_count=1,
@@ -313,7 +313,7 @@ class TestTaskService(unittest.TestCase):
         )
 
     def test_generate_final_videos_falls_back_on_elevenlabs_failure(self):
-        """ElevenLabs 暂时失败时必须保留无配乐视频和结构化警告。"""
+        """ElevenLabs Ante un fallo temporal deben conservarse el video sin música y una advertencia estructurada."""
         params = VideoParams(video_subject="test", bgm_type="elevenlabs")
 
         with (
@@ -345,7 +345,7 @@ class TestTaskService(unittest.TestCase):
         self.assertEqual(generate_video.call_args.kwargs["bgm_file_override"], "")
 
     def test_generate_final_videos_falls_back_without_bgm_on_sonilo_failure(self):
-        """第三方配乐失败时应完成视频并返回可见警告，而不是丢弃所有产物。"""
+        """Si falla la música de terceros debe completarse el video y devolver una advertencia visible, en lugar de descartar todos los resultados."""
         params = VideoParams(video_subject="test", bgm_type="sonilo")
 
         with (
@@ -372,7 +372,7 @@ class TestTaskService(unittest.TestCase):
         self.assertEqual(generate_video.call_args.kwargs["bgm_file_override"], "")
 
     def test_generate_final_videos_skips_sonilo_when_volume_is_zero(self):
-        """0 音量必须完全跳过 Sonilo 生成，并显式禁用残留背景音乐。"""
+        """0 el volumen debe saltarse por completo la generación de Sonilo y desactivar explícitamente la música de fondo residual."""
         params = VideoParams(
             video_subject="test",
             bgm_type="sonilo",
@@ -401,7 +401,7 @@ class TestTaskService(unittest.TestCase):
         self.assertEqual(generate.call_args.kwargs["bgm_file_override"], "")
 
     def test_generate_final_videos_warns_when_sonilo_mix_fails(self):
-        """Sonilo 生成成功但最终混音失败时，任务必须保留视频并返回警告。"""
+        """Sonilo Si la generación tiene éxito pero falla la mezcla final, la tarea debe conservar el video y devolver una advertencia."""
         params = VideoParams(video_subject="test", bgm_type="sonilo")
 
         with (
@@ -428,7 +428,7 @@ class TestTaskService(unittest.TestCase):
         self.assertTrue(generate.call_args.kwargs["bgm_file_override"].endswith(".m4a"))
 
     def test_run_pipeline_fails_fast_when_ffmpeg_is_not_ready(self):
-        """完整视频流水线必须在 LLM/TTS/素材服务之前先确认 FFmpeg 可用。"""
+        """La cadena completa de video debe confirmar que FFmpeg está disponible antes de los servicios de LLM/TTS/material."""
         params = VideoParams(video_subject="test")
         state = MemoryState()
         with (
@@ -448,19 +448,19 @@ class TestTaskService(unittest.TestCase):
         self.assertIn("ffmpeg", result["error"])
 
     def test_run_pipeline_skips_ffmpeg_check_for_script_stage(self):
-        """脚本阶段不涉及音频/视频合成，不应因为缺少 FFmpeg 而被拒绝。"""
+        """La fase de guion no implica composición de audio/video y no debería rechazarse por faltar FFmpeg."""
         params = VideoParams(video_subject="test")
         state = MemoryState()
         with (
             patch.object(tm.utils, "check_ffmpeg_ready", return_value=False) as check,
-            patch.object(tm, "generate_script", return_value="脚本") as generate_script,
+            patch.object(tm, "generate_script", return_value="guion") as generate_script,
             patch.object(tm.sm, "state", state),
         ):
             result = tm.start("ffmpeg-missing-script-stage", params, stop_at="script")
 
         check.assert_not_called()
         generate_script.assert_called_once()
-        self.assertEqual(result, {"script": "脚本"})
+        self.assertEqual(result, {"script": "guion"})
 
     def test_custom_script_keeps_literal_error_text(self):
         """A user's narration about errors is not an LLM provider failure."""
@@ -496,12 +496,12 @@ class TestTaskService(unittest.TestCase):
         self.assertEqual(result["error"], "invalid API key")
 
     def test_run_pipeline_skips_ffmpeg_check_for_terms_stage(self):
-        """搜索词阶段同样不需要 FFmpeg，不应触发探测。"""
+        """La fase de términos de búsqueda tampoco necesita FFmpeg y no debería lanzar la detección."""
         params = VideoParams(video_subject="test")
         state = MemoryState()
         with (
             patch.object(tm.utils, "check_ffmpeg_ready", return_value=False) as check,
-            patch.object(tm, "generate_script", return_value="脚本"),
+            patch.object(tm, "generate_script", return_value="guion"),
             patch.object(tm, "generate_terms", return_value=["term"]),
             patch.object(tm, "save_script_data"),
             patch.object(tm.sm, "state", state),
@@ -509,27 +509,27 @@ class TestTaskService(unittest.TestCase):
             result = tm.start("ffmpeg-missing-terms-stage", params, stop_at="terms")
 
         check.assert_not_called()
-        self.assertEqual(result, {"script": "脚本", "terms": ["term"]})
+        self.assertEqual(result, {"script": "guion", "terms": ["term"]})
 
     def test_run_pipeline_proceeds_past_ffmpeg_preflight_when_ready(self):
-        """FFmpeg 可用时探测不应阻塞后续脚本生成。"""
+        """FFmpeg cuando está disponible, la detección no debería bloquear la generación posterior del guion."""
         params = VideoParams(video_subject="test")
         state = MemoryState()
         with (
             patch.object(tm.utils, "check_ffmpeg_ready", return_value=True) as check,
-            patch.object(tm, "generate_script", return_value="脚本") as generate_script,
+            patch.object(tm, "generate_script", return_value="guion") as generate_script,
             patch.object(tm.sm, "state", state),
         ):
             result = tm.start("ffmpeg-ready", params, stop_at="script")
 
-        # 即使 script 阶段不强制要求 FFmpeg，这里也验证探测函数被跳过调用，
-        # 与"仅在 script/terms 之外阶段才检查"的约定保持一致。
+        # Aunque la fase script no exija FFmpeg, aquí se verifica también que la función de detección no se llama,
+        # de acuerdo con la convención de "solo se comprueba en fases distintas de script/terms".
         check.assert_not_called()
         generate_script.assert_called_once()
-        self.assertEqual(result, {"script": "脚本"})
+        self.assertEqual(result, {"script": "guion"})
 
     def test_start_rejects_missing_sonilo_key_before_costly_pipeline_steps(self):
-        """完整任务缺少 Sonilo Key 时不能先调用 LLM、TTS 或素材服务。"""
+        """Si a una tarea completa le falta la Sonilo Key no se puede llamar antes a LLM, TTS ni servicios de material."""
         params = VideoParams(video_subject="test", bgm_type="sonilo")
         state = MemoryState()
         with (
@@ -551,7 +551,7 @@ class TestTaskService(unittest.TestCase):
         self.assertIn("API key", failed_task["error"])
 
     def test_start_does_not_require_sonilo_key_when_volume_is_zero(self):
-        """0 音量不会使用 Sonilo，因此缺少 Key 时仍应进入正常任务流水线。"""
+        """0 el volumen no usa Sonilo, así que aunque falte la Key debe entrar en la cadena de tareas normal."""
         params = VideoParams(
             video_subject="test",
             bgm_type="sonilo",
@@ -569,8 +569,8 @@ class TestTaskService(unittest.TestCase):
         self.assertEqual(result["failed_stage"], "script")
 
     def test_loomloom_material_failure_keeps_remote_run_id(self):
-        """远端运行已创建后失败，任务状态必须保留 LoomLoom run ID。"""
-        params = VideoParams(video_subject="AI 办公", video_source="loomloom")
+        """Si la ejecución remota falla después de crearse, el estado de la tarea debe conservar el run ID de LoomLoom."""
+        params = VideoParams(video_subject="AI oficina", video_source="loomloom")
         settings = tm.loomloom.LoomLoomSettings(
             base_url="https://example.test/loom/v1",
             api_token="test-token",
@@ -632,7 +632,7 @@ class TestTaskService(unittest.TestCase):
         self.assertEqual(failed_task["loomloom_listing_version_id"], "version-1")
 
     def test_wavespeed_paid_material_failure_keeps_prediction_id(self):
-        """未确认或已付款但下载失败的任务都应在状态中保留恢复用 ID。"""
+        """Las tareas no confirmadas o pagadas pero con descarga fallida deben conservar en el estado el ID de recuperación."""
         params = VideoParams(video_subject="test", video_source="wavespeed")
         for error_type in (
             tm.material.WaveSpeedUnconfirmedTaskError,
@@ -690,8 +690,8 @@ class TestTaskService(unittest.TestCase):
                 self.assertIn("paid image unavailable", failed_task["error"])
 
     def test_loomloom_state_failure_does_not_abandon_paid_remote_run(self):
-        """状态后端不可用时仍需等待并下载已经开始计费的远端任务。"""
-        params = VideoParams(video_subject="AI 办公", video_source="loomloom")
+        """Aunque el backend de estado no esté disponible, hay que esperar y descargar las tareas remotas que ya empezaron a cobrarse."""
+        params = VideoParams(video_subject="AI oficina", video_source="loomloom")
         settings = tm.loomloom.LoomLoomSettings(
             base_url="https://example.test/loom/v1",
             api_token="test-token",
@@ -752,7 +752,7 @@ class TestTaskService(unittest.TestCase):
         backend.download_video_results.assert_called_once()
 
     def test_mark_task_failed_preserves_a_specific_service_failure(self):
-        """服务层已记录具体错误时，编排层不能再用通用错误覆盖它。"""
+        """Si la capa de servicio ya registró el error concreto, la capa de orquestación no puede sobrescribirlo con un error genérico."""
         state = MemoryState()
         state.update_task(
             "specific-service-failure",
@@ -774,7 +774,7 @@ class TestTaskService(unittest.TestCase):
         self.assertEqual(result["loomloom_run_id"], "run-1")
 
     def test_start_rejects_missing_elevenlabs_key_before_pipeline_steps(self):
-        """完整任务缺少 ElevenLabs Key 时必须在任何付费步骤前失败。"""
+        """Si a una tarea completa le falta la ElevenLabs Key debe fallar antes de cualquier paso de pago."""
         params = VideoParams(video_subject="test", bgm_type="elevenlabs")
         state = MemoryState()
         with (
@@ -792,7 +792,7 @@ class TestTaskService(unittest.TestCase):
         self.assertIn("ElevenLabs", result["error"])
 
     def test_start_rejects_free_elevenlabs_plan_before_pipeline_steps(self):
-        """已确认的免费套餐不能先消耗 LLM、TTS 或素材服务额度。"""
+        """Un plan gratuito confirmado no puede consumir antes cuota de LLM, TTS ni servicios de material."""
         params = VideoParams(video_subject="test", bgm_type="elevenlabs")
         state = MemoryState()
         with (
@@ -819,7 +819,7 @@ class TestTaskService(unittest.TestCase):
         self.assertIn("paid plan", result["error"])
 
     def test_start_rejects_oversized_elevenlabs_prompt_before_account_check(self):
-        """API/CLI 绕过 WebUI 时，超长提示词也必须在昂贵步骤前被拒绝。"""
+        """API/CLI Al saltarse la WebUI, los prompts demasiado largos también deben rechazarse antes de los pasos costosos."""
         params = VideoParams(
             video_subject="test",
             bgm_type="elevenlabs",
@@ -843,11 +843,11 @@ class TestTaskService(unittest.TestCase):
 
     def test_generate_terms_uses_script_order_mode_when_enabled(self):
         """
-        默认模式不受影响；只有用户显式开启素材按文案顺序匹配时，任务层才
-        要求 LLM 生成有序关键词，并适当增加关键词数量以覆盖更多脚本片段。
+        El modo por defecto no se ve afectado; solo cuando el usuario activa explícitamente la correspondencia de material en el orden del texto, la capa de tareas
+        pide al LLM palabras clave ordenadas y aumenta adecuadamente su cantidad para cubrir más fragmentos del guion.
         """
         params = VideoParams(
-            video_subject="城市通勤",
+            video_subject="desplazamiento urbano",
             video_script="",
             match_materials_to_script=True,
         )
@@ -855,22 +855,22 @@ class TestTaskService(unittest.TestCase):
         with patch.object(
             tm.llm, "generate_terms", return_value=["city", "train"]
         ) as generate:
-            result = tm.generate_terms("task-id", params, "先城市，再地铁")
+            result = tm.generate_terms("task-id", params, "primero la ciudad, luego el metro")
 
         self.assertEqual(result, ["city", "train"])
         generate.assert_called_once_with(
-            video_subject="城市通勤",
-            video_script="先城市，再地铁",
+            video_subject="desplazamiento urbano",
+            video_script="primero la ciudad, luego el metro",
             amount=8,
             match_script_order=True,
         )
 
     def test_start_stops_before_materials_when_term_provider_fails(self):
         """
-        关键词 Provider 失败后，任务必须立即结束，不能继续生成音频或下载素材。
+        Si falla el Provider de palabras clave, la tarea debe terminar de inmediato, sin seguir generando audio ni descargando material.
 
-        这里从任务入口覆盖完整的错误传播路径，避免未来只修服务层返回类型，
-        却又在任务编排层把空列表转换成其它真值后继续执行外部请求。
+        Aquí se cubre desde el punto de entrada de la tarea toda la ruta de propagación de errores, para evitar que en el futuro solo se corrija el tipo devuelto por la capa de servicio
+        y la capa de orquestación vuelva a convertir la lista vacía en otro valor verdadero y siga ejecutando peticiones externas.
         """
         params = VideoParams(
             video_subject="startup story",
@@ -1172,8 +1172,8 @@ class TestTaskService(unittest.TestCase):
 
     def test_generate_subtitle_uses_whisper_for_custom_audio_without_sub_maker(self):
         """
-        自定义音频不会经过 TTS，所以没有 sub_maker。
-        Whisper 可以直接从音频文件转写，此时不能被 sub_maker 为空的保护逻辑提前跳过。
+        El audio personalizado no pasa por TTS, así que no hay sub_maker.
+        Whisper puede transcribir directamente desde el archivo de audio, y en ese caso la protección de sub_maker vacío no puede saltárselo antes.
         """
         task_id = "test-custom-audio-whisper-subtitle"
         task_dir = utils.task_dir(task_id)
@@ -1183,7 +1183,7 @@ class TestTaskService(unittest.TestCase):
             video_subject="custom audio",
             video_script="Hello world.",
             subtitle_enabled=True,
-            # 测试整句校正路径时必须显式指定模式，不能继承开发机 WebUI 偏好。
+            # Al probar la ruta de corrección de frase completa hay que indicar explícitamente el modo, sin heredar las preferencias de la WebUI de la máquina de desarrollo.
             subtitle_display_mode="sentence",
         )
 
@@ -1231,10 +1231,10 @@ class TestTaskService(unittest.TestCase):
 
     def test_generate_subtitle_uses_whisper_word_timing_without_correction(self):
         """
-        逐词模式必须把 word_level 传给 Whisper，并跳过按整句文案纠正。
+        El modo por palabra debe pasar word_level a Whisper y saltarse la corrección por frase completa del texto.
 
-        若继续执行 correct()，刚生成的逐词条目会被重新聚合，界面虽然选择
-        逐词显示，最终视频却仍会按句显示。
+        Si se siguiera ejecutando correct(), las entradas por palabra recién generadas se volverían a agrupar, y aunque la interfaz eligiera
+        mostrar por palabra, el video final seguiría mostrando por frases.
         """
         task_id = "test-custom-audio-whisper-word-subtitle"
         task_dir = utils.task_dir(task_id)
@@ -1289,8 +1289,8 @@ class TestTaskService(unittest.TestCase):
 
     def test_generate_subtitle_skips_edge_provider_without_sub_maker(self):
         """
-        Edge 字幕依赖 TTS 返回的 sub_maker 时间轴。
-        自定义音频缺少该对象时应继续跳过，避免产生不可信的字幕时间轴。
+        Edge los subtítulos dependen de la línea de tiempo de sub_maker que devuelve el TTS.
+        Si al audio personalizado le falta ese objeto debe seguir omitiéndose, para no producir líneas de tiempo de subtítulos poco fiables.
         """
         task_id = "test-custom-audio-edge-no-submaker"
         task_dir = utils.task_dir(task_id)
@@ -1328,10 +1328,10 @@ class TestTaskService(unittest.TestCase):
 
     def test_generate_subtitle_does_not_fallback_to_whisper_when_edge_fails(self):
         """
-        Edge 没有生成字幕文件时应保留无字幕结果，不能自动下载 Whisper 模型。
+        Edge Si no se generó archivo de subtítulos debe conservarse el resultado sin subtítulos, sin descargar automáticamente el modelo Whisper.
 
-        该场景可能由 TTS 时间轴与原始文案无法匹配触发。自动回退会让未选择
-        Whisper 的用户意外下载数 GB 模型，因此必须验证 Whisper 完全不会被调用。
+        Este escenario puede darse cuando la línea de tiempo del TTS no coincide con el texto original. El respaldo automático haría que usuarios que no lo eligieron
+        Whisper descargaran por sorpresa modelos de varios GB, así que debe verificarse que Whisper no se llame en absoluto.
         """
         task_id = "test-edge-subtitle-without-output"
         task_dir = utils.task_dir(task_id)
@@ -1370,8 +1370,8 @@ class TestTaskService(unittest.TestCase):
 
     def test_start_returns_each_intermediate_result(self):
         """
-        API 的 script、terms、audio、subtitle 和 materials 模式共用同一条任务
-        流水线。每个提前停止点都要返回对应产物，同时不能误执行后续阶段。
+        API los modos script, terms, audio, subtitle y materials comparten la misma cadena
+        de tareas. Cada punto de parada anticipada debe devolver su resultado correspondiente, sin ejecutar por error las fases posteriores.
         """
         expected_results = {
             "script": {"script": "generated script"},
@@ -1455,8 +1455,8 @@ class TestTaskService(unittest.TestCase):
 
     def test_start_completes_video_without_cross_posting(self):
         """
-        完整任务在自动发布未配置时仍应稳定完成，并把所有中间产物写入最终
-        状态。这里还覆盖 API 可能传入字符串拼接模式的兼容转换。
+        Una tarea completa sin publicación automática configurada debe completarse de forma estable, escribiendo todos los resultados intermedios en el
+        estado final. Aquí también se cubre la conversión compatible del modo de concatenación que la API puede pasar como cadena.
         """
         params = VideoParams(video_subject="Coffee")
         params.video_concat_mode = "sequential"
@@ -1505,8 +1505,8 @@ class TestTaskService(unittest.TestCase):
 
     def test_start_marks_pipeline_failures(self):
         """
-        音频、素材和最终视频任一关键产物缺失时都必须进入失败状态，不能把
-        不完整任务误报为完成。三个场景复用相同 mock，仅替换故障阶段。
+        Si falta cualquiera de los resultados clave (audio, material o video final) debe pasar a estado fallido, sin informar
+        de una tarea incompleta como completada. Los tres escenarios reutilizan el mismo mock y solo cambian la fase que falla.
         """
         failure_cases = {
             "audio": (
@@ -1556,7 +1556,7 @@ class TestTaskService(unittest.TestCase):
                 self.assertTrue(failed_task["error"])
 
     def test_start_records_unexpected_pipeline_exception(self):
-        """未预期异常也必须结束任务，并向 API 暴露原始异常类型和信息。"""
+        """Una excepción inesperada también debe terminar la tarea y exponer a la API el tipo y el mensaje de la excepción original."""
         params = VideoParams(video_subject="Coffee")
         state = MemoryState()
 
@@ -1581,8 +1581,8 @@ class TestTaskService(unittest.TestCase):
 
     def test_start_generates_youtube_metadata_for_each_cross_post(self):
         """
-        自动发布到 YouTube 时只生成一次元数据，但要把同一份字段传给每个
-        成片，并在任务结果中保留每次上传成功或失败的独立结果。
+        Al publicar automáticamente en YouTube solo se generan los metadatos una vez, pero los mismos campos deben pasarse a cada
+        video final, conservando en el resultado de la tarea el resultado independiente de cada subida, exitosa o fallida.
         """
         params = VideoParams(
             video_subject="Coffee",
@@ -1676,7 +1676,7 @@ class TestTaskService(unittest.TestCase):
             self.assertEqual(call.kwargs["youtube_extra"], expected_extra)
             self.assertEqual(call.kwargs["platforms"], ["youtube"])
 
-        # start() 返回的是视频完成时的稳定快照；后台发布结果通过任务查询获取。
+        # start() devuelve una instantánea estable del momento en que terminó el video; el resultado de la publicación en segundo plano se obtiene consultando la tarea.
         self.assertEqual(result["cross_post_state"], tm.const.CROSS_POST_STATE_PENDING)
         self.assertIsNone(result["cross_post_results"])
         published_task = state.get_task("youtube-cross-post")
@@ -1694,7 +1694,7 @@ class TestTaskService(unittest.TestCase):
         self.assertEqual(published_task["cross_post_error"], "upload failed")
 
     def test_start_returns_before_cross_post_worker_runs(self):
-        """视频任务完成时只提交发布工作，不能在生成线程中同步上传。"""
+        """Al terminar la tarea de video solo se envía el trabajo de publicación, sin subir de forma síncrona en el hilo de generación."""
         params = VideoParams(video_subject="Coffee")
         service = tm.upload_post.upload_post_service
         state = MemoryState()
@@ -1760,7 +1760,7 @@ class TestTaskService(unittest.TestCase):
         )
 
     def test_cross_post_worker_failure_does_not_change_video_completion(self):
-        """发布线程异常只能更新发布状态，不能破坏已完成的视频结果。"""
+        """Una excepción del hilo de publicación solo puede actualizar el estado de publicación, sin romper el resultado del video ya completado."""
         state = MemoryState()
         state.update_task(
             "cross-post-worker-failure",
@@ -1883,7 +1883,7 @@ class TestTaskService(unittest.TestCase):
         )
 
     def test_start_returns_cross_post_scheduling_failure(self):
-        """同步调度失败必须同时体现在任务状态和 start() 返回快照中。"""
+        """Un fallo de planificación síncrona debe reflejarse tanto en el estado de la tarea como en la instantánea que devuelve start()."""
         params = VideoParams(video_subject="Coffee")
         service = tm.upload_post.upload_post_service
         state = MemoryState()
@@ -1927,7 +1927,7 @@ class TestTaskService(unittest.TestCase):
         )
 
     def test_cross_post_schedule_failure_is_recorded_separately(self):
-        """线程池拒绝新任务时应保留成片，并提供可查询的发布错误。"""
+        """Cuando el pool de hilos rechaza tareas nuevas debe conservarse el video final y ofrecer un error de publicación consultable."""
         state = MemoryState()
         slots = MagicMock()
         slots.acquire.return_value = True
@@ -1966,7 +1966,7 @@ class TestTaskService(unittest.TestCase):
         self.assertIn("executor is shutting down", task["cross_post_error"])
 
     def test_cross_post_worker_always_releases_queue_slot(self):
-        """发布工作异常退出时也必须归还容量，避免后续发布永久被拒绝。"""
+        """Aunque el trabajo de publicación salga con excepción debe devolver la capacidad, para que las publicaciones posteriores no se rechacen para siempre."""
         slots = MagicMock()
         state = MemoryState()
         state.update_task(
@@ -1993,7 +1993,7 @@ class TestTaskService(unittest.TestCase):
         self.assertIn("worker crashed", task["cross_post_error"])
 
     def test_cross_post_state_backend_failure_is_logged_and_skips_upload(self):
-        """首次状态写入失败时不能静默退出，也不能继续消耗发布额度。"""
+        """Si falla la primera escritura de estado no se puede salir en silencio ni seguir consumiendo cuota de publicación."""
         state = MagicMock()
         state.patch_task.side_effect = RuntimeError("redis unavailable")
 
@@ -2025,7 +2025,7 @@ class TestTaskService(unittest.TestCase):
         )
 
     def test_cross_post_state_update_retries_transient_backend_failure(self):
-        """状态后端短暂失败一次后应继续发布，并最终保存完成状态。"""
+        """Tras un fallo puntual del backend de estado debe seguir publicándose y guardar al final el estado completado."""
 
         class FlakyMemoryState(MemoryState):
             def __init__(self):
@@ -2074,8 +2074,8 @@ class TestTaskService(unittest.TestCase):
 
     def test_cross_post_generates_caption_for_non_youtube_platforms(self):
         """
-        TikTok/Instagram 发布同样要生成一次社交文案，并把 caption 作为所有
-        成片共享的发布标题，而不是直接发送原始主题。
+        TikTok/Instagram La publicación también debe generar una vez el texto social, y usar caption como título de publicación compartido por todos
+        los videos finales, en lugar de enviar directamente el tema original.
         """
         metadata = {
             "title": "Coffee Hook",
@@ -2138,7 +2138,7 @@ class TestTaskService(unittest.TestCase):
                 )
 
     def test_cross_post_shares_metadata_between_youtube_fields_and_title(self):
-        """YouTube 专属字段与共享发布标题必须来自同一次元数据调用。"""
+        """YouTube Los campos exclusivos y el título de publicación compartido deben venir de la misma llamada de metadatos."""
         metadata = {
             "title": "Morning Coffee",
             "caption": "A better morning.",
@@ -2196,7 +2196,7 @@ class TestTaskService(unittest.TestCase):
             self.assertEqual(call.kwargs["youtube_extra"], expected_extra)
 
     def test_cross_post_empty_metadata_degrades_to_fallback_title(self):
-        """元数据缺失或为空时逐级退回，最终保留旧的通用兜底标题。"""
+        """Si faltan metadatos o están vacíos se retrocede nivel a nivel, conservando al final el antiguo título genérico de respaldo."""
         state = MemoryState()
         cases = {
             "legacy-string": ({}, "", "Check out this video! #shorts #viral"),
@@ -2245,7 +2245,7 @@ class TestTaskService(unittest.TestCase):
                 self.assertEqual(cross_post.call_args.kwargs["title"], expected_title)
 
     def test_recover_interrupted_cross_posts_preserves_active_future(self):
-        """启动恢复只处理遗留状态，当前进程仍持有的发布任务不能被误伤。"""
+        """La recuperación al arrancar solo procesa estados heredados; las tareas de publicación que aún tiene el proceso actual no pueden verse afectadas."""
         state = MemoryState()
         for task_id in (
             "stale-pending",
@@ -2310,7 +2310,7 @@ class TestTaskService(unittest.TestCase):
         active_future.set_result(None)
 
     def test_recover_interrupted_cross_posts_scans_ids_only_once(self):
-        """启动恢复不能依赖多次独立扫描的分页顺序。"""
+        """La recuperación al arrancar no puede depender del orden de paginación de varios escaneos independientes."""
         state = MemoryState()
         for task_id, cross_post_state in (
             ("stale-pending", tm.const.CROSS_POST_STATE_PENDING),
@@ -2347,14 +2347,14 @@ class TestTaskService(unittest.TestCase):
         )
 
     def test_cross_post_owner_uses_future_registry_for_current_process(self):
-        """当前进程无活动 Future 时，同 PID 的新旧 owner 都应视为中断。"""
+        """Cuando el proceso actual no tiene Future activos, tanto el owner nuevo como el antiguo con el mismo PID deben considerarse interrumpidos."""
         stale_owner = f"{tm.socket.gethostname()}:{tm.os.getpid()}:old-instance"
 
         self.assertFalse(tm._is_cross_post_owner_alive(stale_owner))
         self.assertFalse(tm._is_cross_post_owner_alive(tm._cross_post_process_owner))
 
     def test_cross_post_owner_detection_handles_process_boundaries(self):
-        """所有者探测应覆盖旧记录、其它主机和本机进程异常边界。"""
+        """La detección del propietario debe cubrir registros antiguos, otros hosts y los límites anómalos de procesos locales."""
         hostname = tm.socket.gethostname()
 
         self.assertFalse(tm._is_cross_post_owner_alive(None))
@@ -2392,12 +2392,12 @@ class TestTaskService(unittest.TestCase):
 
     @unittest.skipUnless(os.name == "nt", "Windows process API test")
     def test_windows_process_probe_is_read_only_and_detects_liveness(self):
-        """Windows CI 应真实验证只读进程探测，不允许回退到 os.kill。"""
+        """Windows CI Debe verificarse realmente la detección de procesos de solo lectura, sin permitir volver a os.kill."""
         self.assertTrue(tm._is_windows_process_alive(os.getpid()))
         self.assertFalse(tm._is_windows_process_alive(2_147_483_647))
 
     def test_cross_post_terminal_check_converts_active_state_to_failure(self):
-        """worker 已结束但状态仍活动时，最终回调必须补写失败终态。"""
+        """worker Si terminó pero el estado sigue activo, el callback final debe completar el estado final fallido."""
         state = MemoryState()
         state.update_task(
             "unfinished-cross-post",
@@ -2416,7 +2416,7 @@ class TestTaskService(unittest.TestCase):
         self.assertIn("without persisting", task["cross_post_error"])
 
     def test_cross_post_recovery_reports_state_backend_failure(self):
-        """启动恢复读取状态失败时应返回 None，允许 WebUI 后续 rerun 重试。"""
+        """Si la recuperación al arrancar falla al leer el estado debe devolver None, permitiendo que la WebUI reintente después con rerun."""
         state = MagicMock()
         state.list_task_ids.side_effect = RuntimeError("redis unavailable")
 
@@ -2430,7 +2430,7 @@ class TestTaskService(unittest.TestCase):
         self.assertIn("redis unavailable", log_exception.call_args.args[0])
 
     def test_cancelled_cross_post_future_releases_slot_and_records_failure(self):
-        """排队 Future 被取消时也必须释放容量并写入失败终态。"""
+        """Cuando se cancela un Future en cola también debe liberar capacidad y escribir el estado final fallido."""
         state = MemoryState()
         state.update_task(
             "cancelled-cross-post",
@@ -2460,7 +2460,7 @@ class TestTaskService(unittest.TestCase):
         "MPT_TEST_REDIS_HOST not set",
     )
     def test_real_redis_recovers_interrupted_cross_post_state(self):
-        """真实 Redis 的多批扫描应恢复全部遗留发布状态并保留视频。"""
+        """Los escaneos de varios lotes de un Redis real deben recuperar todos los estados de publicación heredados y conservar el video."""
         state = RedisState(
             host=os.environ["MPT_TEST_REDIS_HOST"],
             port=int(os.getenv("MPT_TEST_REDIS_PORT", "6379")),
@@ -2505,7 +2505,7 @@ class TestTaskService(unittest.TestCase):
                 state.delete_task(task_id)
 
     def test_cross_post_future_exception_is_observed(self):
-        """线程池自身抛出的异常必须进入日志，不能留在无人读取的 Future 中。"""
+        """Las excepciones que lance el propio pool de hilos deben ir al log, sin quedarse en un Future que nadie lee."""
         future = Future()
         future.set_exception(RuntimeError("executor worker failed"))
 
@@ -2516,7 +2516,7 @@ class TestTaskService(unittest.TestCase):
         self.assertIn("executor worker failed", log_error.call_args.args[0])
 
     def test_cross_post_queue_full_rejects_only_publishing(self):
-        """发布队列满载时必须保留成片，并且不能继续向线程池提交任务。"""
+        """Con la cola de publicación llena debe conservarse el video final y no seguir enviando tareas al pool de hilos."""
         state = MemoryState()
         state.update_task(
             "cross-post-queue-full",
@@ -2569,8 +2569,8 @@ class TestTaskService(unittest.TestCase):
             )
 
         params = VideoParams(
-            video_subject="金钱的作用",
-            video_script="金钱不仅是交换媒介，更是社会资源的分配工具。它能满足基本生存需求，如食物和住房，也能提供教育、医疗等提升生活品质的机会。拥有足够的金钱意味着更多选择权，比如职业自由或创业可能。但金钱的作用也有边界，它无法直接购买幸福、健康或真诚的人际关系。过度追逐财富可能导致价值观扭曲，忽视精神层面的需求。理想的状态是理性看待金钱，将其作为实现目标的工具而非终极目的。",
+            video_subject="La función del dinero",
+            video_script="El dinero no es solo un medio de intercambio, sino también una herramienta de distribución de los recursos sociales. Puede cubrir necesidades básicas de supervivencia, como la comida y la vivienda, y también ofrecer oportunidades para mejorar la calidad de vida, como la educación y la sanidad. Tener suficiente dinero significa tener más opciones, como libertad profesional o la posibilidad de emprender. Pero el papel del dinero también tiene límites: no puede comprar directamente la felicidad, la salud ni relaciones humanas sinceras. Perseguir en exceso la riqueza puede distorsionar los valores y hacer descuidar las necesidades espirituales. Lo ideal es ver el dinero de forma racional, como una herramienta para alcanzar objetivos y no como un fin último.",
             video_terms="money importance, wealth and society, financial freedom, money and happiness, role of money",
             video_aspect="9:16",
             video_concat_mode="random",

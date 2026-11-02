@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 # None of the Windows ANSI code pages can encode all of these: the circled
 # digits generate_video() logs, Chinese, an emoji and the narrow no-break
 # space French puts before "!". cp936 (Chinese Windows) only lacks the last two.
-MESSAGE = "① 你好 🤖 C’est\N{NARROW NO-BREAK SPACE}!"
+MESSAGE = "① hola 🤖 C’est\N{NARROW NO-BREAK SPACE}!"
 
 
 def _legacy_stream():

@@ -13,13 +13,13 @@ WEBUI_MAIN = ROOT_DIR / "webui" / "Main.py"
 I18N_DIR = ROOT_DIR / "webui" / "i18n"
 LLM_PROVIDER_TIPS_PREFIX = "llm_provider_tips."
 TTS_PROVIDER_TIPS_PREFIX = "tts_provider_tips."
-SECONDARY_LOCALES = ("az", "ca", "de", "es", "fr", "id", "it", "ko", "pt", "ru", "tr", "vi")
+SECONDARY_LOCALES = ("az", "ca", "de", "fr", "id", "it", "ko", "pt", "ru", "tr", "vi")
 PROVIDER_TIPS_PREFIXES = (
     LLM_PROVIDER_TIPS_PREFIX,
     TTS_PROVIDER_TIPS_PREFIX,
 )
-# 合作 Provider 的品牌名和长说明只维护中英文。次要 locale 统一回退英文，
-# 避免把完全相同的品牌名复制十份，也避免长说明后续只更新部分语言。
+# Los nombres de marca y las descripciones largas de los Providers colaboradores solo se mantienen en español e inglés. Los locales secundarios vuelven al inglés,
+# para no copiar diez veces el mismo nombre de marca y evitar que las descripciones largas se actualicen solo en algunos idiomas.
 ENGLISH_FALLBACK_KEYS = frozenset(
     {
         "Generation Waiting In Queue",
@@ -262,7 +262,7 @@ def _support_locales():
 
 
 def _duplicate_translation_keys(path):
-    """返回 locale 原始文本中重复定义的键，JSON 解析只保留最后一个。"""
+    """Devuelve las claves definidas repetidas en el texto original del locale; el análisis JSON solo conserva la última."""
     duplicates = []
 
     def collect(pairs):
@@ -278,7 +278,7 @@ def _duplicate_translation_keys(path):
 
 
 def _required_translation_keys(translations):
-    """返回二级语言必须维护的 key，Provider 长说明统一回退英文。"""
+    """Devuelve las key que deben mantener los idiomas secundarios; las descripciones largas de Provider vuelven al inglés."""
     return {
         key
         for key in translations
@@ -288,18 +288,18 @@ def _required_translation_keys(translations):
 
 
 def _format_placeholders(value):
-    """提取运行时格式化变量，防止翻译遗漏或误改变量名。"""
+    """Extrae las variables de formato en tiempo de ejecución, para evitar traducciones que omitan o cambien nombres de variables."""
     return set(FORMAT_PLACEHOLDER_PATTERN.findall(value))
 
 
 def _markdown_urls(value):
-    """提取 Markdown 链接目标，允许翻译链接文字但不允许改坏地址。"""
+    """Extrae los destinos de los enlaces Markdown: se permite traducir el texto del enlace, pero no romper la dirección."""
     return set(MARKDOWN_URL_PATTERN.findall(value))
 
 
 class TestWebuiI18n(unittest.TestCase):
     def test_catalan_locale_is_discovered_and_matches_browser_variants(self):
-        """语言文件自动注册；区域变体回退到 ca，但不覆盖用户已保存的选择。"""
+        """Los archivos de idioma se registran automáticamente; las variantes regionales vuelven a ca, sin sobrescribir la elección guardada del usuario."""
         locales = utils.load_locales(str(I18N_DIR))
         self.assertEqual(locales["ca"]["Language"], "Català")
         for browser_locale in ("ca", "ca-ES", "ca_AD", "CA-es", "ca-ES-valencia"):
@@ -311,7 +311,7 @@ class TestWebuiI18n(unittest.TestCase):
         self.assertEqual(utils.resolve_ui_language("ca", "en-US", locales), "ca")
 
     def test_catalan_pause_examples_use_supported_syntax(self):
-        """帮助中的停顿标签必须能被解析，不能把关键字翻成不支持的语法。"""
+        """Las etiquetas de pausa de la ayuda deben poder analizarse, sin traducir la palabra clave a una sintaxis no admitida."""
         help_text = _load_translation("ca")["Video Script Help"]
         examples = re.findall(r"\[pausa: [^\]]+\]", help_text)
         self.assertTrue(examples)
@@ -358,13 +358,13 @@ class TestWebuiI18n(unittest.TestCase):
         self.assertEqual(sorted(visitor.keys - en_keys), [])
 
     def test_shengsuanyun_provider_tips_keep_registration_and_model_links(self):
-        """合作入口和模型目录属于产品配置，避免后续改文案时误删追踪链接。"""
+        """Los accesos de colaboración y el catálogo de modelos son configuración de producto, para no borrar enlaces de seguimiento al cambiar textos."""
         expected_urls = {
             "https://www.shengsuanyun.com/?from=CH_XUQ4OTSK",
             "https://global.modelmesh.info/model",
         }
 
-        for locale in ("zh", "en"):
+        for locale in ("es", "en"):
             with self.subTest(locale=locale):
                 tips = _load_translation(locale)["llm_provider_tips.shengsuanyun"]
                 provider = get_llm_provider("shengsuanyun")
@@ -376,10 +376,10 @@ class TestWebuiI18n(unittest.TestCase):
                 self.assertEqual(_markdown_urls(rendered), expected_urls)
 
     def test_metaso_api_key_label_keeps_mpt_referral_link(self):
-        """秘塔 Key 获取入口必须保留 MPT 追踪参数，避免赞助转化链路失效。"""
+        """El acceso para obtener la Key de Metaso debe conservar el parámetro de seguimiento MPT, para no romper la cadena de conversión del patrocinio."""
         expected_url = "https://metaso.cn/minimax-h3/?s=MPT"
 
-        for locale in ("zh", "en"):
+        for locale in ("es", "en"):
             with self.subTest(locale=locale):
                 label = _load_translation(locale)["Metaso MiniMax API Key"]
                 self.assertEqual(_markdown_urls(label), {expected_url})
@@ -394,8 +394,8 @@ class TestWebuiI18n(unittest.TestCase):
                 self.assertEqual(sorted(required_en_keys - locale_keys), [])
 
     def test_secondary_locales_do_not_duplicate_provider_tips(self):
-        # Provider 配置长说明只维护中英文，其它语言运行时回退英文。
-        # 禁止复制这些 key，避免出现不会持续维护的半翻译内容。
+        # Provider Las descripciones largas de configuración solo se mantienen en español e inglés; los demás idiomas vuelven al inglés en tiempo de ejecución.
+        # Se prohíbe copiar estas key, para evitar contenidos medio traducidos que no se mantendrán.
         for locale in SECONDARY_LOCALES:
             with self.subTest(locale=locale):
                 locale_keys = set(_load_translation(locale))
@@ -455,7 +455,7 @@ class TestWebuiI18n(unittest.TestCase):
         self.assertIn("ca-ES", support_locales)
 
     def test_script_language_options_include_indonesian_with_builtin_voices(self):
-        """印尼语必须可选且内置音色覆盖 id-ID，避免界面已翻译却无法生成印尼语视频。"""
+        """El indonesio debe poder elegirse y las voces incluidas deben cubrir id-ID, para no tener una interfaz traducida sin poder generar videos en indonesio."""
         support_locales = _support_locales()
         self.assertIsNotNone(support_locales)
         self.assertIn("id-ID", support_locales)
@@ -472,9 +472,9 @@ class TestWebuiI18n(unittest.TestCase):
 
     def test_locale_files_do_not_redefine_a_translation_key(self):
         """
-        同一 JSON 对象里出现重复键时，解析只保留最后一个，前一个被静默丢弃。
-        视频转场与字幕动画曾共用 "None" 键，中文转场下拉因此显示成「无动画」。
-        这里直接检查原始 locale 文本，避免同类覆盖再次逃过 tr() 键覆盖测试。
+        Cuando aparecen claves repetidas en el mismo objeto JSON, el análisis solo conserva la última y la anterior se descarta en silencio.
+        Las transiciones de video y las animaciones de subtítulos llegaron a compartir la clave «None», y por eso el desplegable de transiciones mostraba «Sin animación».
+        Aquí se comprueba directamente el texto original del locale, para que sobrescrituras similares no vuelvan a escaparse de la prueba de cobertura de claves de tr().
         """
 
         for path in sorted(I18N_DIR.glob("*.json")):

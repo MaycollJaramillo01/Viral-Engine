@@ -1,4 +1,4 @@
-"""pip 安装后的 mpt 启动入口，复用现有 WebUI 和 CLI。"""
+"""pip Punto de entrada mpt instalado; reutiliza la WebUI y el CLI existentes."""
 
 import argparse
 import socket
@@ -20,8 +20,8 @@ def _port_number(value: str) -> int:
 
 
 def _available_port(host: str) -> int:
-    # 与源码启动脚本保持一致：默认端口被占用时继续寻找，显式指定的端口则
-    # 交给 Streamlit 原样绑定和报错，避免把用户带到另一个服务上。
+    # Coherente con el script de arranque desde el código fuente: si el puerto por defecto está ocupado sigue buscando; un puerto indicado explícitamente
+    # se le pasa a Streamlit tal cual para que lo enlace o informe del error, sin llevar al usuario a otro servicio.
     family = socket.AF_INET6 if ":" in host else socket.AF_INET
     for port in range(8501, 8600):
         try:
@@ -35,7 +35,7 @@ def _available_port(host: str) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    # CLI 自己负责完整参数校验、帮助和退出码，避免两层解析器吞掉业务参数。
+    # CLI se encarga por sí mismo de toda la validación de parámetros, la ayuda y los códigos de salida, para que dos capas de analizadores no se coman parámetros de negocio.
     if argv and argv[0] == "cli":
         if paths.is_source_checkout():
             import cli

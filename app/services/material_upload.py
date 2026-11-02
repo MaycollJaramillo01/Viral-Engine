@@ -35,20 +35,20 @@ _WINDOWS_INVALID_FILENAME_CHARS = frozenset('<>:"|?*')
 _WINDOWS_RESERVED_FILENAMES = frozenset(
     {"CON", "PRN", "AUX", "NUL"}
     | {f"{prefix}{number}" for prefix in ("COM", "LPT") for number in range(1, 10)}
-    # 与 bgm.sanitize_upload_filename 及 webui/Main.py 的下载文件名规则保持同一份
-    # 官方清单：Win32 把 Latin-1 上标数字 ¹、²、³ 也当作设备编号。
+    # Mantiene la misma lista oficial que bgm.sanitize_upload_filename y las reglas de nombres de descarga de webui/Main.py
+    # : Win32 también trata los superíndices Latin-1 ¹, ², ³ como números de dispositivo.
     | {f"{prefix}{number}" for prefix in ("COM", "LPT") for number in ("¹", "²", "³")}
 )
-# 文件名会原样进入日志、API 响应和 WebUI 界面，因此除路径分隔符与 Win32 保留名外，
-# 还要拒绝所有控制符和会改变显示形态的字符。此前只拦截 ord < 32（C0 控制符），
-# 漏掉了同一类问题的另一半：
-# * C1 控制符 U+007F-U+009F：U+0085 会被部分日志查看器渲染成换行，一个文件名就能
-#   伪造出额外的、看起来独立的日志行。
-# * 双向文本控制符 U+200E/U+200F/U+202A-U+202E/U+2066-U+2069：U+202E 之后的字符会被
-#   反向渲染，"photo\u202egnp.mp4" 在资源管理器和日志里看起来像另一个扩展名。
-# * U+2028/U+2029（Unicode 行/段分隔符）同样能在一行日志里制造视觉换行。
-# 这些字符都无法在文件名输入框里键入，正常上传不受影响；判定与
-# bgm.sanitize_upload_filename、app/controllers/base.py 的 normalize_task_id 一致。
+# El nombre de archivo llega tal cual a los logs, las respuestas de la API y la interfaz WebUI, así que además de los separadores de ruta y los nombres reservados de Win32,
+# hay que rechazar todos los caracteres de control y los que alteran la forma de visualización. Antes solo se bloqueaba ord < 32 (controles C0),
+# y se escapaba la otra mitad del mismo problema:
+# * C1 caracteres de control U+007F-U+009F: algunos visores de logs renderizan U+0085 como salto de línea, y un solo nombre de archivo podría
+#   falsificar líneas de log adicionales que parecen independientes.
+# * controles de texto bidireccional U+200E/U+200F/U+202A-U+202E/U+2066-U+2069: los caracteres tras U+202E se
+#   se renderizan al revés, y "photo‮gnp.mp4" parece tener otra extensión en el explorador de archivos y en los logs.
+# * U+2028/U+2029(separadores Unicode de línea/párrafo) también pueden crear saltos de línea visuales dentro de una línea de log.
+# Ninguno de estos caracteres se puede teclear en el campo de nombre de archivo, así que las subidas normales no se ven afectadas; el criterio coincide con
+# bgm.sanitize_upload_filenamey normalize_task_id de app/controllers/base.py.
 _UNSAFE_FILENAME_CHARACTERS = frozenset(
     chr(code)
     for code in (
