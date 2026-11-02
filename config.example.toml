@@ -406,6 +406,12 @@ anthropic_model_name = ""
 # API key: https://aistudio.google.com/app/apikey
 gemini_api_key = ""
 gemini_model_name = ""
+# Gemini TTS: optional model override (default gemini-2.5-flash-preview-tts) and
+# speaking style, sent before the text as a natural-language instruction, e.g.
+# "Read in Spanish with an excited, friendly tone". The 2.5 / 3.1 TTS models
+# apply the style without reading it aloud; the 3.8 models read text verbatim.
+gemini_tts_model = ""
+gemini_tts_style = ""
 
 # Muse Spark (Meta Model API, OpenAI Chat Completions-compatible).
 # API key: https://dev.meta.ai/docs/authentication

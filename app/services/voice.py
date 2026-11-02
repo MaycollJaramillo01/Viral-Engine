@@ -2001,12 +2001,20 @@ def gemini_tts(
             ),
         )
 
+        # El estilo opcional va antes del texto como instrucción en lenguaje natural; los modelos 2.5 / 3.1 lo aplican
+        # sin leerlo en voz alta, pero los 3.8 leen el texto literal. Los subtítulos siguen usando solo `text`.
+        style = str(config.app.get("gemini_tts_style", "") or "").strip()
+        model = (
+            str(config.app.get("gemini_tts_model", "") or "").strip()
+            or "gemini-2.5-flash-preview-tts"
+        )
+
         # google-genai Usa un Client unificado para llamar a los modelos de texto y TTS. El gestor de contexto garantiza
         # que la conexión HTTP se libere al terminar la petición, conservando la lógica original de transcodificación PCM y línea de tiempo de subtítulos.
         with genai.Client(api_key=api_key) as client:
             response = client.models.generate_content(
-                model="gemini-2.5-flash-preview-tts",
-                contents=text,
+                model=model,
+                contents=f"{style}: {text}" if style else text,
                 config=generation_config,
             )
 

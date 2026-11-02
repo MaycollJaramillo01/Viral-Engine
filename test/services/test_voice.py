@@ -560,10 +560,39 @@ class TestVoiceService(unittest.TestCase):
 
         self.assertFalse(output_dir.exists())
 
+        # Con estilo y modelo configurados, el estilo va antes del texto y los subtítulos no lo incluyen.
         with patch("google.genai.Client", _FakeClient), patch.object(
             vs.config,
             "app",
-            dict(vs.config.app, gemini_api_key="test-key"),
+            dict(
+                vs.config.app,
+                gemini_api_key="test-key",
+                gemini_tts_model="gemini-3.1-flash-tts-preview",
+                gemini_tts_style="Lee con tono cercano",
+            ),
+        ):
+            styled = vs.gemini_tts(
+                text=text,
+                voice_name="Zephyr",
+                voice_rate=1.0,
+                voice_file=str(output_dir / "tts-gemini-styled.mp3"),
+            )
+        self.assertEqual(captured["model"], "gemini-3.1-flash-tts-preview")
+        self.assertEqual(captured["contents"], f"Lee con tono cercano: {text}")
+        self.assertEqual(
+            getattr(styled, "subs", []),
+            ["Gemini subtitle generation should work now", "Testing multiple lines"],
+        )
+
+        with patch("google.genai.Client", _FakeClient), patch.object(
+            vs.config,
+            "app",
+            dict(
+                vs.config.app,
+                gemini_api_key="test-key",
+                gemini_tts_model="",
+                gemini_tts_style="",
+            ),
         ):
             sub_maker = vs.gemini_tts(
                 text=text,
