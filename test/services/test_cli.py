@@ -228,6 +228,18 @@ class TestCli(unittest.TestCase):
         params = cli.build_video_params(args)
         self.assertFalse(params.subtitle_enabled)
 
+    def test_default_video_source_follows_config(self):
+        with patch.dict(app_config.app, {"video_source": "openai_image"}):
+            args = cli.parse_args(["--video-subject", "test"])
+            self.assertEqual(cli.build_video_params(args).video_source, "openai_image")
+            # La API usa el mismo valor por defecto cuando la petición no trae video_source.
+            self.assertEqual(
+                app_schema.VideoParams(video_subject="test").video_source, "openai_image"
+            )
+        # loomloom solo existe en la WebUI: el CLI no puede heredarlo.
+        with patch.dict(app_config.app, {"video_source": "loomloom"}):
+            self.assertEqual(cli.parse_args(["--video-subject", "test"]).video_source, "pexels")
+
     def test_coverr_video_source_accepted(self):
         args = cli.parse_args(["--video-subject", "test", "--video-source", "coverr"])
         params = cli.build_video_params(args)

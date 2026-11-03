@@ -354,9 +354,12 @@ Batch manifests:
     material_group = parser.add_argument_group("materials and pipeline")
     material_group.add_argument(
         "--video-source",
-        default="pexels",
+        default=None,
         choices=_CLI_VIDEO_SOURCES,
-        help="video material provider; online providers require matching API keys in config.toml",
+        help=(
+            "video material provider (default: video_source in config.toml, else pexels); "
+            "online providers require matching API keys in config.toml"
+        ),
     )
     material_group.add_argument(
         "--video-materials",
@@ -726,6 +729,15 @@ Batch manifests:
         ),
     )
     args = parser.parse_args(argv)
+    if args.video_source is None:
+        # Sin --video-source se usa la fuente guardada en config.toml (la misma que la WebUI), antes de las validaciones
+        # de abajo, para que una fuente de pago siga exigiendo su --confirm-*-charge.
+        from app.config import config
+
+        configured_source = config.app.get("video_source")
+        args.video_source = (
+            configured_source if configured_source in _CLI_VIDEO_SOURCES else "pexels"
+        )
 
     if (
         not args.batch_file

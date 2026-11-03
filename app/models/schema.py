@@ -121,7 +121,10 @@ class VideoParams(BaseModel):
     match_materials_to_script: bool = False
     video_count: int = Field(default=1, ge=1)
 
-    video_source: Optional[str] = "pexels"
+    # Sin video_source explícito (API) se usa la fuente guardada en config.toml, no Pexels fijo.
+    video_source: Optional[str] = Field(
+        default_factory=lambda: config.app.get("video_source") or "pexels"
+    )
     video_materials: Optional[List[MaterialInfo]] = (
         None  # Materials used to generate the video
     )
