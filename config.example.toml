@@ -412,6 +412,14 @@ gemini_model_name = ""
 # apply the style without reading it aloud; the 3.8 models read text verbatim.
 gemini_tts_model = ""
 gemini_tts_style = ""
+# Script research and self-editing. With script_research = true, Gemini searches
+# Google for verifiable facts about the subject (needs gemini_api_key and a paid
+# plan for search grounding) and the script may only use those for names,
+# numbers and dates. script_refine_rounds = N makes the script model critique and
+# rewrite its own draft N times (hook, tension, facts, closing question).
+script_research = false
+script_research_model = ""          # Default: gemini-flash-latest
+script_refine_rounds = 0
 
 # Muse Spark (Meta Model API, OpenAI Chat Completions-compatible).
 # API key: https://dev.meta.ai/docs/authentication
@@ -831,13 +839,14 @@ open_task_folder_on_completion = true
 # voice_mode = "tts"                 # "tts", "upload", or "none"
 # voice_volume = 1.0
 # voice_rate = 1.0
-# bgm_type = "random"
+# bgm_type = "random"                # "random" uses only your tracks in storage/bgm when there are any
 # bgm_volume = 0.2
 # custom_bgm_file = ""
 # sonilo_bgm_prompt = ""
 # elevenlabs_music_prompt = ""
 # subtitle_enabled = true
 # subtitle_display_mode = "sentence" # "sentence" or "word_by_word"
+# subtitle_max_words = 0             # Split longer captions into chunks of at most N words (0 = whole phrase)
 # subtitle_animation = "none"        # "none" or "pop_spring"
 # font_name = "MicrosoftYaHeiBold.ttc"
 # font_size = 60

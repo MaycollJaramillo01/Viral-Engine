@@ -70,6 +70,23 @@ Generate a script for a video, depending on the subject of the video.
 8. respond in the same language as the video subject.
 """.strip()
 
+# Con script_refine_rounds > 0, el modelo critica su propio borrador con esta lista y lo reescribe.
+SCRIPT_REFINE_PROMPT = """
+# Role: Short Video Script Editor
+
+Critique the draft below against this checklist, then rewrite it fixing every weak point:
+1. the first sentence is a hook (a shocking fact, a question or a twist) that can be spoken in under 3 seconds.
+2. short, natural sentences meant to be read aloud; no filler, no cliches, no greetings.
+3. build tension and land a turn or a reveal before the end.
+4. {facts_rule}
+5. inform without glorifying crime: never praise criminals or explain how to commit a crime, and present accusations as accusations.
+6. close with a question that invites the viewer to comment.
+7. keep the language, the number of paragraphs and the requirements of the brief.
+
+Return only the rewritten script as plain text: no critique, no title, no markdown.
+""".strip()
+SCRIPT_RESEARCH_DEFAULT_MODEL = "gemini-flash-latest"
+
 # Claude Code CLI usa por defecto el prompt de sistema del agente de programación, con muchas restricciones ajenas a la redacción de textos
 # que desviarían la generación de guiones y palabras clave, así que al llamarlo se reemplaza por completo.
 CLAUDE_CODE_SYSTEM_PROMPT = (
@@ -908,6 +925,60 @@ def build_script_prompt(
     return prompt
 
 
+def research_subject(video_subject: str, language: str = "", app_config=None) -> str:
+    """Busca en Google, con Gemini, hechos verificables sobre el tema del video.
+
+    Devuelve los hechos como lista de texto, o "" si falta la clave de Gemini o la
+    búsqueda falla (cuota, red), para que el guion se genere igualmente sin ellos.
+    """
+    runtime_app_config = app_config if app_config is not None else config.app
+    api_key = runtime_app_config.get("gemini_api_key", "")
+    if not api_key:
+        logger.warning("script research skipped: gemini_api_key is not set")
+        return ""
+    model = (
+        str(runtime_app_config.get("script_research_model", "") or "").strip()
+        or SCRIPT_RESEARCH_DEFAULT_MODEL
+    )
+    prompt = (
+        f"Search the web for recent, verifiable facts about: {video_subject}\n"
+        "List 5 to 8 facts, one per line starting with '- ', each with concrete "
+        "names, numbers, places or dates and its source in brackets. Use only facts "
+        "confirmed by the search results, mark accusations and open cases as such, "
+        "and add nothing else. "
+        f"Write the facts in {language or 'the language of the subject'}."
+    )
+    try:
+        from google import genai
+        from google.genai import types
+
+        with genai.Client(api_key=api_key) as client:
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    tools=[types.Tool(google_search=types.GoogleSearch())]
+                ),
+            )
+        facts = (response.text or "").strip()
+        metadata = (
+            response.candidates[0].grounding_metadata if response.candidates else None
+        )
+        sources = [
+            chunk.web.title
+            for chunk in (metadata.grounding_chunks if metadata else None) or []
+            if chunk.web and chunk.web.title
+        ]
+    except Exception as e:
+        logger.warning(f"script research failed, continuing without facts: {e}")
+        return ""
+
+    logger.info(
+        f"script research with {model}, sources: {', '.join(sources) or 'none'}\n{facts}"
+    )
+    return facts
+
+
 def generate_script(
     video_subject: str,
     language: str = "",
@@ -930,6 +1001,17 @@ def generate_script(
         video_script_prompt=video_script_prompt,
         custom_system_prompt=custom_system_prompt,
     )
+    runtime_app_config = app_config if app_config is not None else config.app
+    facts = (
+        research_subject(video_subject, language, app_config)
+        if runtime_app_config.get("script_research", False)
+        else ""
+    )
+    if facts:
+        prompt += (
+            "\n\n# Verified Facts (use only these for names, numbers and dates):\n"
+            f"{facts}"
+        )
     final_script = ""
     logger.info(
         "generating video script: "
@@ -972,12 +1054,14 @@ def generate_script(
         # Join the selected paragraphs into a single string
         return "\n\n".join(paragraphs)
 
+    def ask(text):
+        if app_config is None:
+            return _generate_response(prompt=text)
+        return _generate_response(prompt=text, app_config=app_config)
+
     for i in range(_max_retries):
         try:
-            if app_config is None:
-                response = _generate_response(prompt=prompt)
-            else:
-                response = _generate_response(prompt=prompt, app_config=app_config)
+            response = ask(prompt)
             if isinstance(response, str) and response.startswith("Error: "):
                 # _generate_response returns provider failures as text. Passing
                 # that text through would make the task treat it as narration.
@@ -1000,6 +1084,35 @@ def generate_script(
 
         if i < _max_retries - 1:
             logger.warning(f"failed to generate video script, trying again... {i + 1}")
+
+    facts_rule = (
+        "use only the verified facts of the brief for names, numbers and dates, and remove any other."
+        if facts
+        else "do not add names, numbers or dates, and remove any you are not sure about."
+    )
+    refine_rounds = int(runtime_app_config.get("script_refine_rounds", 0) or 0)
+    for round_number in range(1, refine_rounds + 1):
+        if not final_script:
+            break
+        try:
+            response = ask(
+                SCRIPT_REFINE_PROMPT.format(facts_rule=facts_rule)
+                + f"\n\n# Brief:\n{prompt}\n\n# Draft:\n{final_script}"
+            )
+            if not isinstance(response, str) or response.startswith("Error: "):
+                raise ValueError(response)
+            candidate = format_response(response).strip()
+            if not candidate:
+                raise ValueError("empty response")
+        except Exception as e:
+            # Una ronda fallida (cuota, tiempo de espera) deja la versión anterior, que ya es válida.
+            logger.warning(
+                f"script refine round {round_number} failed, keeping the previous version: {e}"
+            )
+            break
+        final_script = candidate
+        logger.info(f"script refine round {round_number} done")
+
     if not final_script:
         logger.error("failed to generate video script after retries")
     else:
@@ -1081,9 +1194,9 @@ def generate_terms(
 
 ## Constrains:
 1. the search terms are to be returned as a json-array of strings.
-2. each search term should consist of 1-3 words, always add the main subject of the video.
+2. each search term should consist of 1-3 words naming a concrete, filmable scene that stock libraries carry (e.g. "counting cash", "police lights night"); add the main subject only when it can be filmed itself.
 3. you must only return the json-array of strings. you must not return anything else. you must not return the script.
-4. the search terms must be related to the subject of the video.
+4. the search terms must be related to the subject of the video and match the mood of the script (dark, tense scenes for crime or danger; bright scenes for happy topics); avoid shots of signs, posters or text.
 5. reply with english search terms only.
 {ordering_rule}
 

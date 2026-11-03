@@ -43,3 +43,38 @@ def moviepy_subtitles(filename):
         start, end = re.findall("([0-9]*:[0-9]*:[0-9]*,[0-9]*)", timing)
         cues.append(((convert_to_seconds(start), convert_to_seconds(end)), text))
     return cues
+
+
+def split_long_cues(cues, max_words):
+    """Split cues longer than ``max_words`` words into balanced chunks.
+
+    Whole sentences wrap into two or three cramped lines on a phone, so each
+    chunk gets a share of its cue's time proportional to its length. Text
+    without spaces (CJK) stays one cue; ``max_words`` <= 0 keeps every cue.
+    """
+    if max_words <= 0:
+        return cues
+    result = []
+    for (start, end), text in cues:
+        words = text.split()
+        if len(words) <= max_words:
+            result.append(((start, end), text))
+            continue
+        count = -(-len(words) // max_words)
+        size, extra = divmod(len(words), count)
+        chunks, position = [], 0
+        for index in range(count):
+            take = size + (1 if index < extra else 0)
+            chunks.append(" ".join(words[position : position + take]))
+            position += take
+        total = sum(len(chunk) for chunk in chunks)
+        chunk_start = start
+        for index, chunk in enumerate(chunks):
+            chunk_end = (
+                end
+                if index == count - 1
+                else chunk_start + (end - start) * len(chunk) / total
+            )
+            result.append(((chunk_start, chunk_end), chunk))
+            chunk_start = chunk_end
+    return result

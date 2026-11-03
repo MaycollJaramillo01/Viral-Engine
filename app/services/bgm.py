@@ -363,6 +363,11 @@ def list_bgm_files() -> list[str]:
     return _list_bgm_files((utils.song_dir(), uploaded_bgm_dir(create=True)))
 
 
+def list_uploaded_bgm_files() -> list[str]:
+    """Lista solo la música de fondo subida por el usuario (storage/bgm)."""
+    return _list_bgm_files((uploaded_bgm_dir(create=True),))
+
+
 def resolve_builtin_bgm_file(unsafe_path: str) -> str:
     """Resuelve la música de fondo integrada por nombre de archivo, rechazando rutas, archivos desconocidos y archivos subidos por el usuario."""
     if not unsafe_path:

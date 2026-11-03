@@ -44,7 +44,7 @@ from app.models.schema import (
 from app.services import bgm as bgm_service
 from app.services.utils import subtitle_shaping, video_effects
 from app.utils import file_security, logging_utils, utils
-from app.utils.subtitle_reader import moviepy_subtitles
+from app.utils.subtitle_reader import moviepy_subtitles, split_long_cues
 
 class SubClippedVideoClip:
     def __init__(
@@ -899,7 +899,9 @@ def get_bgm_file(bgm_type: str = "random", bgm_file: str = ""):
         return resolved_bgm_file
 
     if bgm_type == "random":
-        files = bgm_service.list_bgm_files()
+        # Con música propia en storage/bgm la rotación usa solo esa, para que las canciones
+        # integradas no rompan el tono del canal; sin ella se usan las integradas.
+        files = bgm_service.list_uploaded_bgm_files() or bgm_service.list_bgm_files()
         # Si el directorio de música de fondo está vacío se recurre directamente a «no usar BGM», para que random.choice([]) no lance una excepción.
         if not files:
             logger.warning("no background music files found")
@@ -1882,7 +1884,10 @@ def generate_video(
             )
 
         if params.subtitle_enabled and subtitle_path and os.path.exists(subtitle_path):
-            subtitles = moviepy_subtitles(subtitle_path)
+            subtitles = split_long_cues(
+                moviepy_subtitles(subtitle_path),
+                int(config.ui.get("subtitle_max_words", 0) or 0),
+            )
             shaped_font = subtitle_shaping.video_font(
                 font_path, (text for _, text in subtitles)
             )

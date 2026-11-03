@@ -692,6 +692,19 @@ class TestVideoService(unittest.TestCase):
             if os.path.exists(bgm_path):
                 os.remove(bgm_path)
 
+    def test_random_bgm_uses_only_uploaded_tracks_when_there_are_any(self):
+        uploaded = os.path.join(vd.bgm_service.uploaded_bgm_dir(), "test-dark-track.mp3")
+        builtin = os.path.join(utils.song_dir(), "output000.mp3")
+
+        with patch.object(
+            vd.bgm_service, "list_uploaded_bgm_files", return_value=[uploaded]
+        ):
+            self.assertEqual(vd.get_bgm_file(bgm_type="random"), uploaded)
+        with patch.object(
+            vd.bgm_service, "list_uploaded_bgm_files", return_value=[]
+        ), patch.object(vd.bgm_service, "list_bgm_files", return_value=[builtin]):
+            self.assertEqual(vd.get_bgm_file(bgm_type="random"), builtin)
+
     def test_get_bgm_file_rejects_path_outside_song_directory(self):
         """
         El bgm_file que pasa el usuario no puede abrirse directamente como ruta local, o podría leer archivos del sistema.
