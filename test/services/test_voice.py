@@ -1146,42 +1146,32 @@ class TestVoiceService(unittest.TestCase):
         self.assertIsNone(result)
         self.assertTrue(close_calls, "AudioFileClip.close() was never called")
 
-    def test_generate_subtitle_keeps_edge_provider_for_gemini_legacy_submaker(self):
-        """
-        Verifica que la estructura de subtítulos legacy que devuelve Gemini TTS pueda producir directamente con el provider edge
-        SRT, sin volver a Whisper por un fallo de coincidencia.
-        """
+    def test_generate_subtitle_aligns_gemini_legacy_timings_to_audio(self):
         script = "Gemini subtitle generation should work now. Testing multiple lines."
         sub_maker = vs.populate_legacy_submaker_with_full_text(
-            vs.ensure_legacy_submaker_fields(vs.SubMaker()),
-            script,
-            2.4,
+            vs.ensure_legacy_submaker_fields(vs.SubMaker()), script, 2.4,
         )
 
-        with tempfile.TemporaryDirectory() as tmp_dir, patch.object(
-            task_service.config,
-            "app",
-            dict(task_service.config.app, subtitle_provider="edge"),
-        ), patch("app.services.subtitle.create") as whisper_create, patch(
-            "app.utils.utils.task_dir",
-            lambda tid="": str(Path(tmp_dir) / tid) if tid else str(Path(tmp_dir)),
-        ):
-            task_id = "gemini-subtitle-edge-task"
-            Path(tmp_dir, task_id).mkdir(parents=True, exist_ok=True)
-            subtitle_path = task_service.generate_subtitle(
-                task_id=task_id,
-                params=type("Params", (), {"subtitle_enabled": True})(),
-                video_script=script,
-                sub_maker=sub_maker,
-                audio_file="",
+        def transcribe(audio_file, subtitle_file, word_level=False, reference_text=""):
+            self.assertEqual(audio_file, "narration.mp3")
+            self.assertEqual(reference_text, script)
+            Path(subtitle_file).write_text(
+                "1\n00:00:00,250 --> 00:00:02,100\n" + script + "\n\n", encoding="utf-8"
             )
 
-            self.assertTrue(subtitle_path.endswith("subtitle.srt"))
+        with tempfile.TemporaryDirectory() as tmp_dir, patch.dict(
+            task_service.config.app, {"subtitle_provider": "edge"}
+        ), patch("app.services.subtitle.create", side_effect=transcribe) as create, patch(
+            "app.utils.utils.task_dir", return_value=tmp_dir
+        ), patch("app.services.voice.create_subtitle") as estimated:
+            subtitle_path = task_service.generate_subtitle(
+                "gemini-aligned", type("Params", (), {"subtitle_enabled": True})(),
+                script, sub_maker, "narration.mp3",
+            )
             self.assertTrue(Path(subtitle_path).exists())
-            self.assertFalse(whisper_create.called)
-            subtitle_content = Path(subtitle_path).read_text(encoding="utf-8")
-            self.assertIn("Gemini subtitle generation should work now", subtitle_content)
-            self.assertIn("Testing multiple lines", subtitle_content)
+            self.assertIn("00:00:00,250", Path(subtitle_path).read_text(encoding="utf-8"))
+            create.assert_called_once()
+            estimated.assert_not_called()
 
     def test_script_split_keeps_thousand_separator_comma(self):
         """

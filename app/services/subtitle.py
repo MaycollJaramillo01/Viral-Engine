@@ -63,6 +63,8 @@ def create(
     subtitle_file: str = "",
     word_level: bool = False,
     log_details: bool = True,
+    max_words: int = 0,
+    reference_text: str = "",
 ):
     if WhisperModel is None:
         logger.warning("faster_whisper not available, skipping whisper subtitle generation")
@@ -81,7 +83,8 @@ def create(
         word_timestamps=True,
         vad_filter=True,
         vad_parameters=dict(min_silence_duration_ms=500),
-        **({"initial_prompt": initial_prompt} if initial_prompt else {}),
+        **({"initial_prompt": initial_prompt or utils.remove_pause_tags(reference_text)}
+           if initial_prompt or reference_text else {}),
     )
 
     logger.info(
@@ -117,6 +120,24 @@ def create(
                 cleaned_word = word.word.strip()
                 if cleaned_word:
                     recognized(cleaned_word, word.start, word.end)
+            continue
+
+        if max_words > 0:
+            # Group actual word boundaries, preserving pauses and changes of pace.
+            # Splitting a sentence into equal durations makes short captions drift.
+            chunk = []
+            for word in segment.words:
+                if not word.word.strip():
+                    continue
+                if chunk and word.start - chunk[-1].end > 0.6:
+                    recognized("".join(w.word for w in chunk), chunk[0].start, chunk[-1].end)
+                    chunk = []
+                chunk.append(word)
+                if len(chunk) >= max_words or word.word.rstrip().endswith(tuple(const.PUNCTUATIONS)):
+                    recognized("".join(w.word for w in chunk), chunk[0].start, chunk[-1].end)
+                    chunk = []
+            if chunk:
+                recognized("".join(w.word for w in chunk), chunk[0].start, chunk[-1].end)
             continue
 
         words_idx = 0

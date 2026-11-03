@@ -759,6 +759,11 @@
     "Configure Providers": "Configure",
     "Active Provider": "In use: {provider}",
     "No Configured Providers": "No providers configured yet.",
-    "Provider Configuration Changed": "Configuration changed. Review this provider in its settings."
+    "Provider Configuration Changed": "Configuration changed. Review this provider in its settings.",
+    "Documentary Portraits": "Real portraits · Wikimedia",
+    "Documentary Portraits Help": "Photographs of the named protagonists, resolved through Wikipedia and Wikimedia Commons. Opens with the main protagonist and keeps narration order. Source, author and license are saved with the task. If a photo is unavailable, use your own photographs in Local Material.",
+    "Opening Title Enabled": "Show an opening headline",
+    "Opening Title": "Opening headline",
+    "Opening Title Help": "A short, relevant headline shown over the first image for 3 seconds. Leave blank to generate it from the narration."
   }
 }

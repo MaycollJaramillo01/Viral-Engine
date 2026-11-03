@@ -1631,7 +1631,7 @@ def generate_video(
     output_dir = os.path.dirname(output_file)
 
     font_path = ""
-    if params.subtitle_enabled:
+    if params.subtitle_enabled or params.opening_title:
         if not params.font_name:
             params.font_name = "STHeitiMedium.ttc"
         # API Aunque la entrada ya hizo la comprobación previa, la WebUI, el CLI y las llamadas internas pueden entrar directamente en la capa de renderizado;
@@ -1903,6 +1903,24 @@ def generate_video(
                 clip = create_text_clip(subtitle_item=item)
                 text_clips.append(clip)
             video_clip = CompositeVideoClip([video_clip, *text_clips])
+            clip_stack.callback(video_clip.close)
+
+        if params.opening_title.strip():
+            # Overlay at t=0 on the protagonist's photo. It adds no silent intro
+            # and never shifts the narration or its subtitle timestamps.
+            title_size = max(24, int(video_width * 0.072))
+            title_font = subtitle_shaping.video_font(font_path, [params.opening_title])
+            title = clip_stack.enter_context(subtitle_shaping.text_clip(
+                TextClip, shaped_font=title_font, font=font_path,
+                text=params.opening_title, font_size=title_size,
+                color="#FFFFFF", stroke_color="#000000", stroke_width=3,
+                method="caption", size=(int(video_width * 0.88), None),
+                text_align="center", margin=(12, 18),
+            ))
+            title = title.with_start(0).with_duration(
+                min(params.opening_title_duration, voice_source_clip.duration, source_video_clip.duration)
+            ).with_position(("center", int(video_height * 0.08)))
+            video_clip = CompositeVideoClip([video_clip, title])
             clip_stack.callback(video_clip.close)
 
         bgm_enabled = bgm_service.should_use_bgm(

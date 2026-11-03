@@ -36,6 +36,7 @@ from app.services import (
     task_artifacts,
     video,
     volcengine_seedance,
+    wikimedia,
 )
 from app.utils import logging_utils, utils
 
@@ -155,6 +156,13 @@ def _material_source_record(item: MaterialInfo, local_path: str) -> dict[str, An
         record["asset_id"] = str(asset_id)
     if source_page:
         record["source_page"] = source_page
+    if item.provider == "wikimedia":
+        for field in ("person", "license", "attribution"):
+            if isinstance(source.get(field), str):
+                record[field] = source[field]
+        license_url = _safe_public_url(source.get("license_url"))
+        if license_url:
+            record["license_url"] = license_url
 
     creator = _creator_info(source.get("creator"))
     if creator:
@@ -2371,6 +2379,33 @@ def _select_materials_until_duration(
     return selected
 
 
+def _download_documentary_portraits(task_id, search_terms, audio_duration, max_clip_duration, image_motion, progress_callback):
+    if not search_terms or audio_duration <= 0:
+        return []
+    needed = max(1, math.ceil(audio_duration / max_clip_duration))
+    # Keep repeated protagonists in narration order, with the main face first.
+    names = [search_terms[min(i * len(search_terms) // needed, len(search_terms) - 1)] for i in range(needed)]
+    clips = {}
+    sources = []
+    result = []
+    try:
+        for index, person in enumerate(names):
+            if person not in clips:
+                photo = wikimedia.find_portrait(person)
+                item = wikimedia.download_portrait(photo, utils.task_dir(task_id), max_clip_duration)
+                rendered = _render_openai_image_video(item.url, max_clip_duration, image_motion=image_motion)
+                if not rendered:
+                    raise wikimedia.PortraitNotFound(f"No se pudo preparar la fotografía de {person}")
+                clips[person] = rendered
+                sources.append(_material_source_record(item, rendered))
+            result.append(clips[person])
+            if progress_callback:
+                progress_callback((index + 1) / needed)
+    finally:
+        _persist_material_sources(task_id, sources)
+    return result
+
+
 def download_videos(
     task_id: str,
     search_terms: List[str],
@@ -2392,6 +2427,11 @@ def download_videos(
     archivo descargado con la proporción completada de 0~1, para que la capa de tareas avance la barra de progreso. Las fuentes de material de pago
     generado bajo demanda no informan del progreso de descarga.
     """
+    if source == "wikimedia":
+        return _download_documentary_portraits(
+            task_id, search_terms, audio_duration, max_clip_duration, image_motion, progress_callback
+        )
+
     provider = "pexels"
     remote_search_videos = search_videos_pexels
     if source == "pixabay":

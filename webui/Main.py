@@ -134,7 +134,7 @@ LOOMLOOM_MAX_POLL_FAILURES = 5
 # Volcengine, Infistar; después el resto de servicios. Así el orden es el mismo en ambos accesos, y además
 # no cambia la semántica de los campos en config.toml, las tareas históricas ni las peticiones de API, y los usuarios antiguos no tienen que migrar la configuración.
 VIDEO_SOURCE_GROUPS = {
-    "stock_video": ("pexels", "pixabay", "coverr"),
+    "stock_video": ("pexels", "pixabay", "coverr", "wikimedia"),
     "ai_video": (
         "metaso_minimax",
         "ofox",
@@ -1640,6 +1640,10 @@ def _apply_restored_params(params):
     st.session_state["subtitle_enabled_checkbox"] = bool(
         params.get("subtitle_enabled", True)
     )
+    st.session_state["opening_title_enabled_checkbox"] = bool(
+        params.get("opening_title_enabled") or params.get("opening_title")
+    )
+    st.session_state["opening_title_input"] = params.get("opening_title") or ""
     _set_stable_widget_value("font_name_select", params.get("font_name") or "")
     _set_stable_widget_value(
         "subtitle_position_select", params.get("subtitle_position") or "bottom"
@@ -3403,6 +3407,7 @@ def _initialize_material_navigation(target, settings):
 
 def _material_provider_labels():
     return {
+        "wikimedia": tr("Documentary Portraits"),
         "pexels": tr("Pexels"),
         "pixabay": tr("Pixabay"),
         "coverr": tr("Coverr"),
@@ -3603,7 +3608,9 @@ def _save_settings_api_keys(config_key, widget_key):
 
 def _render_material_provider_settings(provider):
     app_settings = config.snapshot_config_with_pending(config.app)
-    if provider in VIDEO_SOURCE_GROUPS["stock_video"]:
+    if provider == "wikimedia":
+        st.caption(tr("Documentary Portraits Help"))
+    elif provider in VIDEO_SOURCE_GROUPS["stock_video"]:
         labels = {
             "pexels": "Pexels API Key",
             "pixabay": "Pixabay API Key",
@@ -5498,6 +5505,7 @@ def _render_local_script_generation(params):
                 script,
                 amount=8 if params.match_materials_to_script else 5,
                 match_script_order=params.match_materials_to_script,
+                **({"real_people": True} if params.video_source == "wikimedia" else {}),
                 app_config=app_config_snapshot,
             )
             return script, terms
@@ -6001,6 +6009,7 @@ def _render_script_settings(panel, params):
                                 params.video_script,
                                 amount=8 if params.match_materials_to_script else 5,
                                 match_script_order=params.match_materials_to_script,
+                                **({"real_people": True} if params.video_source == "wikimedia" else {}),
                                 app_config=app_config_snapshot,
                             ),
                         )
@@ -6027,6 +6036,7 @@ def _render_video_settings(panel, params):
                 (tr("Random"), "random"),
             ]
             video_source_labels = {
+                "wikimedia": tr("Documentary Portraits"),
                 "pexels": tr("Pexels"),
                 "pixabay": tr("Pixabay"),
                 "coverr": tr("Coverr"),
@@ -6061,6 +6071,23 @@ def _render_video_settings(panel, params):
                 on_settings=_open_material_settings_dialog,
             )
             _set_runtime_config("app", "video_source", params.video_source)
+
+            if params.video_source == "wikimedia":
+                st.caption(tr("Documentary Portraits Help"))
+                st.session_state["match_materials_to_script"] = True
+                st.session_state["opening_title_enabled_checkbox"] = True
+            params.opening_title_enabled = st.checkbox(
+                tr("Opening Title Enabled"),
+                value=_saved_ui_bool("opening_title_enabled", params.video_source == "wikimedia"),
+                key="opening_title_enabled_checkbox",
+                disabled=params.video_source == "wikimedia",
+            )
+            _set_runtime_config("ui", "opening_title_enabled", params.opening_title_enabled)
+            if params.opening_title_enabled:
+                params.opening_title = st.text_input(
+                    tr("Opening Title"), value="", max_chars=80,
+                    help=tr("Opening Title Help"), key="opening_title_input",
+                )
 
             loomloom_video_capability = None
             if params.video_source == "loomloom":
@@ -6129,6 +6156,7 @@ def _render_video_settings(panel, params):
                 help=tr("Match Materials to Script Order Help"),
                 key="match_materials_to_script",
                 on_change=sync_script_order_concat_mode,
+                disabled=params.video_source == "wikimedia",
             )
             _set_runtime_config(
                 "app",
@@ -6233,7 +6261,7 @@ def _render_video_settings(panel, params):
                 "ui", "video_fit_mode", params.video_fit_mode.value
             )
 
-            if params.video_source in {"local", "openai_image", "codex_image"}:
+            if params.video_source in {"local", "openai_image", "codex_image", "wikimedia"}:
                 image_motion_labels = {
                     ImageMotion.static.value: tr("Static Image"),
                     ImageMotion.zoom.value: tr("Slow Zoom"),

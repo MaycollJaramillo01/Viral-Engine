@@ -22,6 +22,11 @@ PROVIDER_TIPS_PREFIXES = (
 # para no copiar diez veces el mismo nombre de marca y evitar que las descripciones largas se actualicen solo en algunos idiomas.
 ENGLISH_FALLBACK_KEYS = frozenset(
     {
+        "Documentary Portraits",
+        "Documentary Portraits Help",
+        "Opening Title Enabled",
+        "Opening Title",
+        "Opening Title Help",
         "Generation Waiting In Queue",
         "Generation Preparing",
         "Generation Writing Script",

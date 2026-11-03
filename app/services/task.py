@@ -37,6 +37,7 @@ from app.services import (
     video,
     volcengine_seedance,
     voice,
+    wikimedia,
 )
 from app.services import upload_post
 from app.services import state as sm
@@ -102,7 +103,7 @@ _VIDEO_MUSIC_PROVIDERS = {
 _SUPPORTED_VIDEO_SOURCES = frozenset({
     "pexels", "pixabay", "coverr", "local", "wavespeed",
     "volcengine_seedance", "ofox", "metaso_minimax", "muapi",
-    "loomloom", "openai_image", "codex_image", "infistar", "jalapeno",
+    "loomloom", "openai_image", "codex_image", "infistar", "jalapeno", "wikimedia",
 })
 
 
@@ -385,6 +386,15 @@ def generate_script(task_id, params):
 def generate_terms(task_id, params, video_script):
     logger.info("\n\n## generating video terms")
     video_terms = params.video_terms
+    if params.video_source == "wikimedia":
+        # Keywords left over from stock/AI sources must not select generic scenes.
+        return llm.generate_terms(
+            video_subject=params.video_subject,
+            video_script=utils.remove_pause_tags(video_script),
+            amount=40,
+            match_script_order=True,
+            real_people=True,
+        )
     if not video_terms:
         # Al activar la correspondencia del material en el orden del texto, las propias palabras clave también deben generarse en el orden narrativo del guion;
         # de lo contrario, aunque después se descargue y se una en orden, solo se podría reutilizar un conjunto de palabras clave globales,
@@ -666,6 +676,15 @@ def generate_subtitle(task_id, params, video_script, sub_maker, audio_file):
 
     final_subtitle_path = path.join(utils.task_dir(task_id), "subtitle.srt")
     subtitle_provider = config.app.get("subtitle_provider", "edge").strip().lower()
+    estimated_timing = (
+        getattr(sub_maker, "timing_source", "") == "estimated"
+        or voice.is_gemini_voice(getattr(params, "voice_name", "") or "")
+    )
+    if subtitle_provider == "auto":
+        subtitle_provider = "whisper" if estimated_timing or sub_maker is None else "edge"
+    elif subtitle_provider == "edge" and estimated_timing:
+        logger.info("TTS has estimated timings; aligning subtitles to the narration with Whisper")
+        subtitle_provider = "whisper"
     logger.info(f"\n\n## generating subtitle, provider: {subtitle_provider}")
 
     if not subtitle_provider:
@@ -705,15 +724,18 @@ def generate_subtitle(task_id, params, video_script, sub_maker, audio_file):
                 return ""
 
         if subtitle_provider == "whisper":
+            max_words = 0 if is_word_level else max(0, int(config.ui.get("subtitle_max_words", 0) or 0))
             subtitle.create(
                 audio_file=audio_file,
                 subtitle_file=subtitle_path,
                 word_level=is_word_level,
+                **({"max_words": max_words} if max_words else {}),
+                **({"reference_text": video_script} if estimated_timing else {}),
             )
             if not subtitle.file_to_subtitles(subtitle_path):
                 logger.warning("whisper produced no usable subtitle cues")
                 return ""
-            if not is_word_level:
+            if not is_word_level and not max_words and not estimated_timing:
                 logger.info("\n\n## correcting subtitle")
                 subtitle.correct(subtitle_file=subtitle_path, video_script=video_script)
 
@@ -834,7 +856,7 @@ def get_video_materials(
                     if params.match_materials_to_script
                     else params.video_concat_mode
                 ),
-                audio_duration=audio_duration * params.video_count,
+                audio_duration=audio_duration * (1 if params.video_source == "wikimedia" else params.video_count),
                 max_clip_duration=params.video_clip_duration,
                 match_script_order=params.match_materials_to_script,
                 image_motion=params.image_motion,
@@ -843,6 +865,9 @@ def get_video_materials(
                 progress_callback=_stage_progress_reporter(task_id, 40, 50),
                 **generation_options,
             )
+        except wikimedia.PortraitNotFound as exc:
+            _mark_task_failed(task_id, "materials", str(exc))
+            return None
         except volcengine_seedance.VolcEngineSeedanceError as exc:
             # Tanto el estado no confirmado como el generado pero con descarga fallida corresponden a una tarea remota recuperable en la consola de Ark
             # . Se escribe el estado de fallo de forma unificada con el task_id que lleva la excepción, para que distintas ramas de excepción
@@ -1039,7 +1064,7 @@ def generate_final_videos(
         and bgm_service.should_use_bgm(params.bgm_type, params.bgm_volume)
     )
     # Matching preserves keyword order; batch allocation varies each keyword's candidates.
-    if params.match_materials_to_script:
+    if params.match_materials_to_script or params.video_source == "wikimedia":
         video_concat_mode = VideoConcatMode.sequential
     elif params.video_count == 1:
         video_concat_mode = params.video_concat_mode
@@ -1761,6 +1786,11 @@ def _run_pipeline(
                 "failed to generate video search terms",
             )
 
+    if stop_at == "video" and (params.opening_title_enabled or params.video_source == "wikimedia"):
+        if not params.opening_title.strip():
+            params.opening_title = llm.generate_opening_title(
+                params.video_subject, video_script, params.video_language
+            )
     save_script_data(task_id, video_script, video_terms, params)
 
     if stop_at == "terms":
@@ -1831,6 +1861,16 @@ def _run_pipeline(
     subtitle_path = generate_subtitle(
         task_id, params, video_script, sub_maker, audio_file
     )
+
+    if (
+        not subtitle_path and params.subtitle_enabled
+        and (config.app.get("subtitle_provider") in {"auto", "whisper"}
+             or getattr(sub_maker, "timing_source", "") == "estimated"
+             or voice.is_gemini_voice(getattr(params, "voice_name", "") or ""))
+    ):
+        return _mark_task_failed(
+            task_id, "subtitle", "No se pudieron sincronizar los subtítulos con el audio. Revisa Whisper e inténtalo de nuevo."
+        )
 
     if stop_at == "subtitle":
         if not subtitle_path:

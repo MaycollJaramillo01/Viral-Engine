@@ -68,6 +68,8 @@ Generate a script for a video, depending on the subject of the video.
 6. do not include "voiceover", "narrator" or similar indicators of what should be spoken at the beginning of each paragraph or line.
 7. you must not mention the prompt, or anything about the script itself. also, never talk about the amount of paragraphs or lines. just write the script.
 8. respond in the same language as the video subject.
+9. open with a concrete hook in at most 10 words: name the protagonist and the conflict, consequence or surprising verified fact. It must be spoken in about 3 seconds.
+10. create curiosity that the story actually resolves; avoid generic questions, greetings, invented secrets, exaggerated claims and unsupported accusations.
 """.strip()
 
 # Con script_refine_rounds > 0, el modelo critica su propio borrador con esta lista y lo reescribe.
@@ -75,7 +77,7 @@ SCRIPT_REFINE_PROMPT = """
 # Role: Short Video Script Editor
 
 Critique the draft below against this checklist, then rewrite it fixing every weak point:
-1. the first sentence is a hook (a shocking fact, a question or a twist) that can be spoken in under 3 seconds.
+1. the first sentence is a specific hook of at most 10 words, naming the protagonist and a verified conflict, consequence or twist. It can be spoken in about 3 seconds; no generic teaser or invented secret.
 2. short, natural sentences meant to be read aloud; no filler, no cliches, no greetings.
 3. build tension and land a turn or a reveal before the end.
 4. {facts_rule}
@@ -1156,6 +1158,7 @@ def generate_terms(
     amount: int = 5,
     match_script_order: bool = False,
     app_config=None,
+    real_people: bool = False,
 ) -> List[str]:
     video_script = utils.remove_pause_tags(video_script or "").strip()
     if match_script_order:
@@ -1213,6 +1216,17 @@ def generate_terms(
 Please note that you must use English for generating video search terms; Chinese is not accepted.
 """.strip()
 
+    if real_people:
+        prompt = f"""Extract the people to show in a documentary about {video_subject}.
+Return only a JSON array of full real names, one entry for each sentence of the narration, in narration order.
+The first entry must be the main human protagonist from the subject, so the video opens with their face.
+For each later sentence choose the person it discusses, or keep the preceding protagonist when no person is named.
+Choose the person performing the main action, not every passing mention. Keep the main protagonist for background details.
+Repeat names as needed. Use only people explicitly named in the subject or narration, with the spelling used there.
+Never return stock scenes, objects, fictional characters, actors portraying the person, visual descriptions or invented names.
+Return [] if there is no named human protagonist. At most {amount} entries.
+Narration: {video_script}"""
+
     logger.info(f"subject: {video_subject}, match_script_order: {match_script_order}")
 
     search_terms = []
@@ -1252,6 +1266,16 @@ Please note that you must use English for generating video search terms; Chinese
         # Enforce the prompt contract before material providers are contacted;
         # repeated topics remain meaningful in chronological mode.
         search_terms = [term.strip() for term in search_terms if term.strip()][:amount]
+        if real_people:
+            context = unicodedata.normalize("NFKD", f"{video_subject} {video_script}").casefold()
+            context = " ".join("".join(c for c in context if not unicodedata.combining(c)).split())
+            search_terms = [
+                term for term in search_terms
+                if " ".join("".join(
+                    c for c in unicodedata.normalize("NFKD", term).casefold()
+                    if not unicodedata.combining(c)
+                ).split()) in context
+            ]
         if search_terms:
             break
         if i < _max_retries - 1:
@@ -1259,6 +1283,25 @@ Please note that you must use English for generating video search terms; Chinese
 
     logger.success(f"completed: \n{search_terms}")
     return search_terms
+
+
+def generate_opening_title(video_subject: str, video_script: str, language: str = "") -> str:
+    """A short on-screen headline, separate from the spoken narration."""
+    prompt = f"""Write one compelling documentary opening headline in {language or 'the language of the narration'}.
+Use 3-8 words and at most 60 characters. Name the protagonist and the central conflict or surprising verified fact.
+Create curiosity without invented secrets or sensational claims. Use only information in the narration.
+Return only the headline, without quotes, labels, markdown or explanation.
+Subject: {video_subject}
+Narration: {video_script}"""
+    try:
+        title = _generate_response(prompt).strip().strip('"“”')
+        if title and not title.startswith("Error:") and "\n" not in title and len(title) <= 60 and len(title.split()) <= 8:
+            return title
+    except Exception as exc:
+        logger.warning(f"opening headline generation failed: {type(exc).__name__}")
+    # A factual subject is preferable to an invented teaser when the LLM fails.
+    title = " ".join(video_subject.split()[:8])
+    return title if len(title) <= 60 else title[:60].rsplit(" ", 1)[0]
 
 
 # =============================================================================

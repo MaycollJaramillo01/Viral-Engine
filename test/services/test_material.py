@@ -1096,7 +1096,8 @@ class TestMaterialTlsVerification(unittest.TestCase):
 
             self.assertEqual(Path(result), cached_path)
             self.assertEqual(cached_path.read_bytes(), b"healthy cached video")
-            validate.assert_called_once_with(str(cached_path))
+            validate.assert_called_once()
+            self.assertEqual(Path(validate.call_args.args[0]), cached_path)
             get.assert_not_called()
 
     def test_nonfinite_video_metadata_is_not_published(self):

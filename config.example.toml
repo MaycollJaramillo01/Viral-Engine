@@ -102,6 +102,8 @@ tls_verify = true
 # OpenAI-compatible /images/generations endpoint (local ComfyUI/SD gateways
 # or cloud relays) and renders it into a video clip.
 video_source = "pexels"
+# For documentaries about named people, choose "wikimedia" for real portraits.
+# Opens with the main protagonist and a short headline; stores photo credits.
 
 # API key lists support key rotation. Use straight ASCII double quotes and
 # separate multiple keys with commas, for example: ["key-1", "key-2"].
@@ -586,10 +588,12 @@ pollinations_model_name = ""
 mimo_tts_model_name = "mimo-v2.5-tts"
 mimo_tts_style_prompt = "Lee con un tono natural y claro, adecuado para la narración de videos cortos."
 
-# Subtitle provider: "edge" or "whisper". Whisper is loaded only when selected
-# explicitly; Edge failures do not trigger an automatic Whisper model download.
+# Subtitle provider: "auto", "edge" or "whisper". Voices without measured word
+# timings use Whisper; native Edge/Azure timings avoid loading the model.
 # Leave empty to skip generation.
-subtitle_provider = "edge"
+subtitle_provider = "auto"
+# auto uses native TTS timings when available and Whisper for voices such as Gemini.
+# Whisper captions are grouped using actual word timestamps (ui.subtitle_max_words).
 
 # FFmpeg is normally downloaded and detected automatically. If detection fails,
 # download it from https://www.gyan.dev/ffmpeg/builds/ and set the executable.

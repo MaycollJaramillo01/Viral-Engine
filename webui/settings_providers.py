@@ -95,6 +95,7 @@ def configured_material_providers(settings, groups, codex_connected=False):
     }
     enabled.update(
         {
+            "wikimedia": True,
             "metaso_minimax": metaso_minimax.is_enabled(settings),
             "ofox": ofox.is_enabled(settings),
             "volcengine_seedance": volcengine_seedance.is_enabled(settings),

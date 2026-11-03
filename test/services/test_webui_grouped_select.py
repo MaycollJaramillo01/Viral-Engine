@@ -86,6 +86,20 @@ def test_grouped_video_source_applies_first_change_and_allows_switching_back():
         assert harness.calls[-1]["data"]["value"] == "pexels"
 
 
+def test_documentary_source_enables_opening_title_and_keeps_narration_order():
+    harness = _GroupedSelectHarness()
+    with _running_app(harness) as app:
+        harness.selected = "wikimedia"
+        app.run()
+        assert [str(item.value) for item in app.exception] == []
+        assert app.session_state["video_source_select_en"] == "wikimedia"
+        assert app.session_state["match_materials_to_script"] is True
+        assert app.session_state["opening_title_enabled_checkbox"] is True
+        app.text_input(key="opening_title_input").set_value("Escobar llegó al Congreso").run()
+        assert [str(item.value) for item in app.exception] == []
+        assert app.session_state["opening_title_input"] == "Escobar llegó al Congreso"
+
+
 def test_grouped_video_source_ignores_unknown_event_and_repairs_saved_value():
     """Ni una configuración caducada ni eventos falsificados pueden llevar la página a un estado de origen de material desconocido."""
     harness = _GroupedSelectHarness()
@@ -118,6 +132,7 @@ def test_grouped_video_source_keeps_groups_and_accessible_label_binding():
             "pexels",
             "pixabay",
             "coverr",
+            "wikimedia",
             "metaso_minimax",
             "ofox",
             "loomloom",

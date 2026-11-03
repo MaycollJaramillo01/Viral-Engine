@@ -110,6 +110,9 @@ class VideoParams(BaseModel):
 
     video_subject: str
     video_script: str = ""  # Script used to generate the video
+    opening_title: str = Field(default="", max_length=80)
+    opening_title_enabled: bool = False
+    opening_title_duration: float = Field(default=3.0, ge=1, le=5, allow_inf_nan=False)
     video_terms: Optional[str | List[str]] = None  # Keywords used to generate the video
     video_aspect: Optional[VideoAspect] = VideoAspect.portrait
     video_fit_mode: VideoFitMode = VideoFitMode.cover

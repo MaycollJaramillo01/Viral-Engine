@@ -1136,6 +1136,8 @@ def _tts_with_pauses(
                         combined_submaker.cues.append(shifted_cue)
 
                 # 2. migración legacy subs/offset
+                if getattr(chunk_submaker, "timing_source", "") == "estimated":
+                    combined_submaker.timing_source = "estimated"
                 if hasattr(chunk_submaker, "subs") and chunk_submaker.subs:
                     combined_submaker.subs.extend(chunk_submaker.subs)
                 if hasattr(chunk_submaker, "offset") and chunk_submaker.offset:
@@ -1283,6 +1285,7 @@ def populate_legacy_submaker_with_full_text(
     """
     sub_maker = ensure_legacy_submaker_fields(sub_maker)
 
+    sub_maker.timing_source = "estimated"
     # Vacía los valores antiguos, para que no se acumulen datos sucios cuando el llamador reutiliza el objeto.
     sub_maker.subs = []
     sub_maker.offset = []
