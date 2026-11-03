@@ -1972,6 +1972,19 @@ def _download_videos_openai_image_on_demand(
         _persist_material_sources(task_id, material_sources)
         return video_paths
 
+    # Cada palabra clave da una sola imagen: con menos palabras clave que clips, el video repetiría las mismas imágenes.
+    # Se estira la lista en orden hasta tener una por clip (sin desordenar el guion), y las repeticiones piden otro
+    # encuadre para que el modelo no devuelva casi la misma imagen. El corte por duración de abajo sigue evitando pagar de más.
+    needed_images = math.ceil(required_duration / max(int(max_clip_duration), 1))
+    if 0 < len(search_terms) < needed_images:
+        sources = [i * len(search_terms) // needed_images for i in range(needed_images)]
+        framings = ("close-up detail", "wide establishing shot")
+        search_terms = [
+            search_terms[s] if i == sources.index(s)
+            else f"{search_terms[s]}, {framings[(i - sources.index(s) - 1) % 2]}"
+            for i, s in enumerate(sources)
+        ]
+
     if image_generator is None:
         image_generator = generate_images_openai
     generation_options = {}

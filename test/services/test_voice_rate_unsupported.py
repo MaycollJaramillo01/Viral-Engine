@@ -30,24 +30,21 @@ def logged_warnings():
 
 def _narrate_with_gemini(tmp_path, voice_rate):
     """Narrate TEXT through voice.tts() and return the Gemini request."""
-    part = SimpleNamespace(inline_data=SimpleNamespace(data=PCM_SILENCE))
+    audio = {"type": "audio", "data": base64.b64encode(PCM_SILENCE).decode("ascii")}
     response = SimpleNamespace(
-        candidates=[SimpleNamespace(content=SimpleNamespace(parts=[part]))]
+        status_code=200, text="", json=lambda: {"steps": [{"content": [audio]}]}
     )
     with (
-        patch("google.genai.Client") as client,
+        patch("app.services.voice.requests.post", return_value=response) as post,
         patch.dict(voice.config.app, {"gemini_api_key": "test-key"}),
     ):
-        generate = client.return_value.__enter__.return_value.models.generate_content
-        generate.return_value = response
         sub_maker = voice.tts(
             TEXT, "gemini:Zephyr-Bright", voice_rate, str(tmp_path / "gemini.mp3")
         )
 
     assert sub_maker is not None
-    generate.assert_called_once()
-    request = generate.call_args.kwargs
-    return request["model"], request["contents"], request["config"].model_dump()
+    post.assert_called_once()
+    return post.call_args.kwargs["json"]
 
 
 def _narrate_with_mimo(tmp_path, voice_rate):

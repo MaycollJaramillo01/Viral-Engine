@@ -1977,8 +1977,6 @@ def gemini_tts(
     import base64
     import io
     from pydub import AudioSegment
-    from google import genai
-    from google.genai import types
     _configure_pydub_ffmpeg(AudioSegment)
     
     temporary_audio = None
@@ -1990,62 +1988,63 @@ def gemini_tts(
 
         logger.info(f"start, voice name: {voice_name}, try: 1")
 
-        generation_config = types.GenerateContentConfig(
-            response_modalities=["AUDIO"],
-            speech_config=types.SpeechConfig(
-                voice_config=types.VoiceConfig(
-                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name=voice_name
-                    )
-                )
-            ),
-        )
-
-        # El estilo opcional va antes del texto como instrucción en lenguaje natural; los modelos 2.5 / 3.1 lo aplican
-        # sin leerlo en voz alta, pero los 3.8 leen el texto literal. Los subtítulos siguen usando solo `text`.
+        # Los modelos 3.8 leen `text` literal y reciben el estilo aparte, en speech_metadata; los subtítulos siguen
+        # usando solo `text`. Va por REST porque google-genai 2.11 no conoce esa anotación y la envía como UNKNOWN.
+        # Los modelos 2.5 / 3.1 no aceptan esta petición (Google apaga gemini-2.5-flash-preview-tts el 2026-11-17).
         style = str(config.app.get("gemini_tts_style", "") or "").strip()
         model = (
             str(config.app.get("gemini_tts_model", "") or "").strip()
-            or "gemini-2.5-flash-preview-tts"
+            or "gemini-3.8-flash-tts"
         )
-
-        # google-genai Usa un Client unificado para llamar a los modelos de texto y TTS. El gestor de contexto garantiza
-        # que la conexión HTTP se libere al terminar la petición, conservando la lógica original de transcodificación PCM y línea de tiempo de subtítulos.
-        with genai.Client(api_key=api_key) as client:
-            response = client.models.generate_content(
-                model=model,
-                contents=f"{style}: {text}" if style else text,
-                config=generation_config,
-            )
-
-        # A blocked prompt can have no candidates; a stopped candidate can
-        # have no content or parts. All are empty-audio responses, not decoder
-        # errors. Preserve the provider's reason without logging its text.
-        candidate = response.candidates[0] if response.candidates else None
-        content = getattr(candidate, "content", None)
-        audio_data = None
-        for part in getattr(content, "parts", None) or []:
-            if hasattr(part, 'inline_data') and part.inline_data:
-                audio_data = part.inline_data.data
-                break
-                
-        if not audio_data:
-            feedback = getattr(response, "prompt_feedback", None)
+        text_input = {"type": "text", "text": text}
+        if style:
+            text_input["annotations"] = [{"type": "speech_metadata", "style": style}]
+        response = trace_http_call(
+            "POST", requests.post,
+            "https://generativelanguage.googleapis.com/v1beta/interactions",
+            json={
+                "model": model,
+                "input": [{"type": "user_input", "content": [text_input]}],
+                # PCM de 24 kHz, mono y 16 bits: el formato que se decodifica abajo.
+                "response_format": {
+                    "type": "audio", "mime_type": "audio/l16", "sample_rate": 24000,
+                },
+                "generation_config": {"speech_config": [{"voice": voice_name}]},
+            },
+            headers={"x-goog-api-key": api_key},
+            allow_redirects=False,
+            timeout=(30, 300),
+        )
+        try:
+            body = response.json()
+        except ValueError:
+            body = {}
+        if isinstance(body, list):
+            # Algunos errores (como una clave inválida) llegan como lista de un objeto.
+            body = body[0] if body and isinstance(body[0], dict) else {}
+        if response.status_code != 200:
             logger.error(
-                "No audio data received from Gemini TTS: "
-                "finish_reason={}, prompt_block_reason={}",
-                getattr(candidate, "finish_reason", None),
-                getattr(feedback, "block_reason", None),
+                f"Gemini TTS failed: HTTP {response.status_code}, "
+                f"{(body.get('error') or {}).get('message') or response.text[:300]}"
             )
             return None
-            
-        # Los datos de audio ya son bytes en bruto, no hace falta decodificar base64
-        if isinstance(audio_data, str):
-            # Si es una cadena, hay que decodificar base64
-            audio_bytes = base64.b64decode(audio_data)
-        else:
-            # Si ya son bytes, se usan directamente
-            audio_bytes = audio_data
+
+        # Un texto bloqueado o una interacción incompleta llegan sin audio: se registra el estado, no el texto.
+        audio_data = next(
+            (
+                item.get("data")
+                for step in body.get("steps") or []
+                for item in step.get("content") or []
+                if item.get("type") == "audio"
+            ),
+            None,
+        )
+        if not audio_data:
+            logger.error(
+                f"No audio data received from Gemini TTS: status={body.get('status')}"
+            )
+            return None
+        audio_bytes = base64.b64decode(audio_data)
         
         # Prueba distintos formatos de audio: Gemini puede devolver formatos distintos
         audio_segment = None

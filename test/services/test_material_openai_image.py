@@ -854,6 +854,44 @@ class TestOpenAIImageProvider(unittest.TestCase):
         self.assertEqual(generate.call_count, 2)
         self.assertEqual(len(result), 2)
 
+    def test_download_videos_openai_image_stretches_terms_to_one_image_per_clip(self):
+        """Con menos palabras clave que clips, cada clip recibe su propia imagen en el orden del guion, con otro encuadre al repetir."""
+
+        def fake_generate(search_term, minimum_duration, video_aspect, save_dir=""):
+            return [self._generated_item(search_term, f"/tmp/{search_term}.png")]
+
+        with (
+            patch(
+                "app.services.material.generate_images_openai",
+                side_effect=fake_generate,
+            ) as generate,
+            patch(
+                "app.services.material._render_openai_image_video",
+                side_effect=lambda image_path, *_args, **_kwargs: f"{image_path}.mp4",
+            ),
+        ):
+            result = material.download_videos(
+                task_id="test-openai-image-stretch",
+                search_terms=["term-1", "term-2"],
+                source="openai_image",
+                audio_duration=26,
+                max_clip_duration=5,
+            )
+
+        # 26 s con clips de 5 s necesitan 6 imágenes distintas, no 2 repetidas en bucle
+        self.assertEqual(
+            [call.kwargs["search_term"] for call in generate.call_args_list],
+            [
+                "term-1",
+                "term-1, close-up detail",
+                "term-1, wide establishing shot",
+                "term-2",
+                "term-2, close-up detail",
+                "term-2, wide establishing shot",
+            ],
+        )
+        self.assertEqual(len(result), 6)
+
     def test_download_videos_openai_image_bypasses_search_cache(self):
         """
         El resultado generado es un archivo de imagen de un solo uso y no participa en la caché de búsqueda de 24 horas: la caché haría que distintas

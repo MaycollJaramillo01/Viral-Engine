@@ -406,10 +406,10 @@ anthropic_model_name = ""
 # API key: https://aistudio.google.com/app/apikey
 gemini_api_key = ""
 gemini_model_name = ""
-# Gemini TTS: optional model override (default gemini-2.5-flash-preview-tts) and
-# speaking style, sent before the text as a natural-language instruction, e.g.
-# "Read in Spanish with an excited, friendly tone". The 2.5 / 3.1 TTS models
-# apply the style without reading it aloud; the 3.8 models read text verbatim.
+# Gemini TTS: optional model override (default gemini-3.8-flash-tts, or the
+# cheaper gemini-3.8-flash-lite-tts) and speaking style, sent apart from the
+# text so it is never read aloud, e.g. "serious, slow documentary narration".
+# The older 2.5 / 3.1 TTS models are not supported.
 gemini_tts_model = ""
 gemini_tts_style = ""
 # Script research and self-editing. With script_research = true, Gemini searches
