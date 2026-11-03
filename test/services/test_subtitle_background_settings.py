@@ -127,12 +127,12 @@ class TestSubtitleBackgroundSettings(unittest.TestCase):
 
         self.assertFalse(
             video.subtitle_font_supports_text(
-                str(fonts_dir / "BeVietnamPro-Bold.ttf"), "La inteligencia artificial cambia la vida"
+                str(fonts_dir / "BeVietnamPro-Bold.ttf"), "人工智能改变生活"
             )
         )
         self.assertTrue(
             video.subtitle_font_supports_text(
-                str(fonts_dir / "MicrosoftYaHeiBold.ttc"), "La inteligencia artificial cambia la vida"
+                str(fonts_dir / "MicrosoftYaHeiBold.ttc"), "人工智能改变生活"
             )
         )
         self.assertTrue(

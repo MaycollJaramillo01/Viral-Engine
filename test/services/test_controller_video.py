@@ -844,8 +844,8 @@ class TestVideoControllerFiles(unittest.TestCase):
             ("video name.mp4", "attachment; filename*=utf-8''video%20name.mp4"),
             (
                 "vídeo en español.mp4",
-                "attachment; filename*=utf-8''%E4%B8%AD%E6%96%87%20"
-                "%E8%A7%86%E9%A2%91.mp4",
+                "attachment; filename*=utf-8''v%C3%ADdeo%20en%20"
+                "espa%C3%B1ol.mp4",
             ),
             (
                 "name=draft;v1(test).mp4",
