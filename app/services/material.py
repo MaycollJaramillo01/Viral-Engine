@@ -156,8 +156,8 @@ def _material_source_record(item: MaterialInfo, local_path: str) -> dict[str, An
         record["asset_id"] = str(asset_id)
     if source_page:
         record["source_page"] = source_page
-    if item.provider == "wikimedia":
-        for field in ("person", "license", "attribution"):
+    if item.provider in {"wikimedia", "editorial_archive"}:
+        for field in ("person", "license", "attribution", "description"):
             if isinstance(source.get(field), str):
                 record[field] = source[field]
         license_url = _safe_public_url(source.get("license_url"))
@@ -2379,26 +2379,47 @@ def _select_materials_until_duration(
     return selected
 
 
-def _download_documentary_portraits(task_id, search_terms, audio_duration, max_clip_duration, image_motion, progress_callback):
+def _download_documentary_portraits(task_id, search_terms, audio_duration, max_clip_duration, image_motion, progress_callback, video_aspect=VideoAspect.portrait):
     if not search_terms or audio_duration <= 0:
         return []
     needed = max(1, math.ceil(audio_duration / max_clip_duration))
     # Keep repeated protagonists in narration order, with the main face first.
     names = [search_terms[min(i * len(search_terms) // needed, len(search_terms) - 1)] for i in range(needed)]
-    clips = {}
     sources = []
     result = []
+    selected = []
+    seen = []
+    galleries = {
+        name: iter(wikimedia.find_portraits(name, limit=needed * 3))
+        for name in dict.fromkeys(names)
+    }
+    # Validate the complete selection before spending time rendering. Never fill
+    # a missing gallery by repeating its first face for the rest of the narration.
+    for person in names:
+        for photo in galleries[person]:
+            try:
+                item = wikimedia.download_portrait(photo, utils.task_dir(task_id), max_clip_duration, video_aspect=video_aspect)
+            except requests.RequestException as exc:
+                logger.warning(f"archive photo unavailable for {person}: {type(exc).__name__}")
+                continue
+            fingerprints = wikimedia.photo_fingerprints(item.url)
+            if any(min((a ^ b).bit_count() for a in fingerprints for b in previous) <= 5 for previous in seen):
+                continue
+            seen.append(fingerprints)
+            selected.append(item)
+            break
+        else:
+            raise wikimedia.PortraitNotFound(
+                f"No hay suficientes fotografías distintas de {person} para este video. "
+                "Añade material de archivo; no se repetirá una imagen para rellenarlo."
+            )
     try:
-        for index, person in enumerate(names):
-            if person not in clips:
-                photo = wikimedia.find_portrait(person)
-                item = wikimedia.download_portrait(photo, utils.task_dir(task_id), max_clip_duration)
-                rendered = _render_openai_image_video(item.url, max_clip_duration, image_motion=image_motion)
-                if not rendered:
-                    raise wikimedia.PortraitNotFound(f"No se pudo preparar la fotografía de {person}")
-                clips[person] = rendered
-                sources.append(_material_source_record(item, rendered))
-            result.append(clips[person])
+        for index, item in enumerate(selected):
+            rendered = _render_openai_image_video(item.url, max_clip_duration, image_motion=image_motion)
+            if not rendered:
+                raise wikimedia.PortraitNotFound("No se pudo preparar una fotografía de archivo")
+            sources.append(_material_source_record(item, rendered))
+            result.append(rendered)
             if progress_callback:
                 progress_callback((index + 1) / needed)
     finally:
@@ -2429,7 +2450,7 @@ def download_videos(
     """
     if source == "wikimedia":
         return _download_documentary_portraits(
-            task_id, search_terms, audio_duration, max_clip_duration, image_motion, progress_callback
+            task_id, search_terms, audio_duration, max_clip_duration, image_motion, progress_callback, video_aspect=video_aspect
         )
 
     provider = "pexels"

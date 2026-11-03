@@ -110,14 +110,23 @@ def test_nonhuman_and_disambiguation_pages_are_rejected():
             wikimedia.find_portrait("Congress")
 
 
-def test_documentary_materials_preserve_first_protagonist_and_never_generate_images(tmp_path):
-    def download(photo, directory, duration):
+def test_documentary_materials_use_a_different_photo_for_every_scene(tmp_path):
+    from PIL import Image
+    import numpy as np
+
+    def download(photo, directory, duration, **kwargs):
+        path = tmp_path / (photo["asset_id"] + ".jpg")
+        seed = sum(map(ord, photo["asset_id"]))
+        Image.fromarray(np.random.default_rng(seed).integers(0, 256, (160, 160, 3), dtype=np.uint8)).save(path)
         item = material.MaterialInfo()
-        item.provider, item.url, item.duration = "wikimedia", photo["person"] + ".jpg", duration
-        item.source_info = {"search_term": photo["person"], "license": "Public domain"}
+        item.provider, item.url, item.duration = "editorial_archive", str(path), duration
+        item.source_info = {"search_term": photo["person"], "asset_id": photo["asset_id"]}
         return item
 
-    with patch.object(wikimedia, "find_portrait", side_effect=lambda name: {"person": name}), patch.object(
+    def gallery(name, **kwargs):
+        return [{"person": name, "asset_id": name + str(i)} for i in range(3)]
+
+    with patch.object(wikimedia, "find_portraits", side_effect=gallery), patch.object(
         wikimedia, "download_portrait", side_effect=download
     ), patch.object(material, "_render_openai_image_video", side_effect=lambda image, *a, **k: image + ".mp4"), patch.object(
         material, "_persist_material_sources"
@@ -126,8 +135,55 @@ def test_documentary_materials_preserve_first_protagonist_and_never_generate_ima
             "documentary", ["Pablo Escobar", "Rodrigo Lara Bonilla"], source="wikimedia",
             audio_duration=20, max_clip_duration=5, video_concat_mode=VideoConcatMode.random,
         )
-    assert paths == ["Pablo Escobar.jpg.mp4"] * 2 + ["Rodrigo Lara Bonilla.jpg.mp4"] * 2
+    assert len(paths) == len(set(paths)) == 4
+    assert "Pablo Escobar" in paths[0]
+    assert "Rodrigo Lara Bonilla" in paths[-1]
     generated.assert_not_called()
+
+
+def test_one_face_cannot_be_repeated_to_fill_the_video(tmp_path):
+    from PIL import Image
+    import numpy as np
+
+    image = tmp_path / "same-photo.jpg"
+    Image.fromarray(np.random.default_rng(42).integers(0, 256, (160, 160, 3), dtype=np.uint8)).save(image)
+    item = material.MaterialInfo()
+    item.url, item.duration = str(image), 5
+    with patch.object(wikimedia, "find_portraits", return_value=[{"asset_id": "one"}, {"asset_id": "same-image-another-url"}]), patch.object(
+        wikimedia, "download_portrait", return_value=item
+    ), patch.object(material, "_render_openai_image_video") as render:
+        with pytest.raises(wikimedia.PortraitNotFound, match="fotografías distintas"):
+            material.download_videos("doc", ["Pablo Escobar"], source="wikimedia", audio_duration=20)
+    render.assert_not_called()
+
+
+def test_visual_duplicates_are_detected_after_resize_and_recompression(tmp_path):
+    from PIL import Image
+    import numpy as np
+
+    image = Image.fromarray(np.random.default_rng(100).integers(0, 256, (400, 400, 3), dtype=np.uint8))
+    image.save(tmp_path / "original.png")
+    image.resize((200, 200)).save(tmp_path / "copy.jpg", quality=80)
+    original = wikimedia.photo_fingerprints(str(tmp_path / "original.png"))
+    copied = wikimedia.photo_fingerprints(str(tmp_path / "copy.jpg"))
+    assert min((a ^ b).bit_count() for a in original for b in copied) <= 5
+
+
+def test_reviewed_archive_catalog_carries_distinct_assets_and_sources():
+    import json
+    photos = json.loads(Path(wikimedia.__file__).with_name("documentary_photos.json").read_text(encoding="utf-8"))
+    assert len({p["asset_id"] for p in photos}) == len(photos)
+    assert sum(p["person"] == "Pablo Escobar" for p in photos) >= 6
+    assert all(p["reviewed"] and p["source_page"].startswith("https://") and p["creator"] for p in photos)
+
+
+def test_archive_gallery_survives_unavailable_wiki_lookup():
+    import requests
+    with patch.object(wikimedia, "find_portrait", side_effect=requests.ConnectionError):
+        photos = wikimedia.find_portraits("Pablo Escobar")
+    assert len(photos) >= 6
+    assert photos[0]["provider"] == "editorial_archive"
+    assert len({p["asset_id"] for p in photos}) == len(photos)
 
 
 def test_portrait_terms_keep_names_and_repeats_in_narration_order():

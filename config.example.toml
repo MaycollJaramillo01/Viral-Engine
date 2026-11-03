@@ -102,8 +102,9 @@ tls_verify = true
 # OpenAI-compatible /images/generations endpoint (local ComfyUI/SD gateways
 # or cloud relays) and renders it into a video clip.
 video_source = "pexels"
-# For documentaries about named people, choose "wikimedia" for real portraits.
-# Opens with the main protagonist and a short headline; stores photo credits.
+# For documentaries, "wikimedia" combines reviewed photo archives and Commons.
+# Every scene uses a different photograph, with source credits. Missing unique
+# photos stop generation instead of repeating the same portrait to fill time.
 
 # API key lists support key rotation. Use straight ASCII double quotes and
 # separate multiple keys with commas, for example: ["key-1", "key-2"].

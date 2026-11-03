@@ -760,8 +760,8 @@
     "Active Provider": "En uso: {provider}",
     "No Configured Providers": "Todavía no hay proveedores configurados.",
     "Provider Configuration Changed": "La configuración cambió. Revisa este proveedor en su configuración.",
-    "Documentary Portraits": "Fotos reales · Wikimedia",
-    "Documentary Portraits Help": "Fotografías de los protagonistas identificados en Wikipedia y Wikimedia Commons. El video abre con el protagonista principal y mantiene el orden narrativo. Se guardan fuente, autor y licencia con la tarea. Si falta una foto, puedes aportar fotografías en Material local.",
+    "Documentary Portraits": "Fotos reales · Archivo y Wikimedia",
+    "Documentary Portraits Help": "Fotografías distintas y documentadas de los protagonistas, de archivos revisados y Wikimedia Commons. Se guardan fuente y créditos con la tarea. Si no hay suficientes fotos diferentes, la tarea se detiene; no se rellena el video repitiendo una cara.",
     "Opening Title Enabled": "Mostrar un título inicial",
     "Opening Title": "Título inicial",
     "Opening Title Help": "Título breve y relevante sobre la primera imagen durante 3 segundos. Déjalo vacío para generarlo a partir del guion."
